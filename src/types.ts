@@ -85,3 +85,25 @@ export type Photo = {
     id: string;
     spotImgSrc: string;
 }
+
+/*
+    v2用の型
+*/
+
+export type v2SearchSpots = {
+    spots?: Spot[],
+    area?: string,
+    depatureAt: Spot[],
+    date: {
+        depatureDay: string,
+        returnDay: string,
+    },
+    transitWay: 'CAR' | 'train',
+    condition?: Condition
+}
+
+type Condition = {
+    eating: string[],
+    wantedDo: string[],
+    hotel: string[]
+}

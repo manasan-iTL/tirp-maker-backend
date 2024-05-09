@@ -6,6 +6,7 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon --watch 'src/**/*.ts' --exec \"ts-node\" src/server.ts",
+    "server": "tsx watch src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -23,8 +24,7 @@
     "@types/express": "^4.17.18",
     "@types/google.maps": "^3.54.3",
     "@types/node": "^20.8.2",
-    "nodemon": "^3.0.1",
-    "ts-node": "^10.9.1",
+    "tsx": "^4.9.3",
     "typescript": "^5.2.2"
   }
 }

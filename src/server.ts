@@ -8,6 +8,7 @@ import axios from 'axios';
 import { start } from 'repl';
 import { calcNextDate, convertRoutes, convertSpots } from './utils/convertRoutes';
 import { createDirectionRequest } from './utils/fetch';
+import { apiRouter } from './router/spots';
 const app = express();
 const port = 8000;
 
@@ -17,6 +18,7 @@ app.use(cors({
     credentials: true, //レスポンスヘッダーにAccess-Control-Allow-Credentials追加
     optionsSuccessStatus: 200 //レスポンスstatusを200に設定
 }))
+app.use('/api/v2/spots', apiRouter)
 
 // 定数系
 const client = new Client({});

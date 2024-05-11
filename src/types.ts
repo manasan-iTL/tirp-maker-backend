@@ -1,4 +1,4 @@
-import { LatLng }  from "@googlemaps/google-maps-services-js";
+import { LatLng, LatLngLiteral }  from "@googlemaps/google-maps-services-js";
 
 export type Spot = {
     id: string;
@@ -106,4 +106,23 @@ type Condition = {
     eating: string[],
     wantedDo: string[],
     hotel: string[]
+}
+
+
+/**
+
+Google Places APiの型定義
+
+ */
+
+export type PlacesResponse = {
+    places: Place[]
+}
+
+export type Place = {
+    displayName: string;
+    types: string[];
+    rating: number;
+    userRatingCount: number;
+    location: LatLngLiteral
 }

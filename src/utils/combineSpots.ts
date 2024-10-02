@@ -1,5 +1,9 @@
 
-import { Place, PlacesResponse } from "src/types";
+import { IFetchAllRecommendSpot } from "src/repositories/gPlacesRepo";
+import { Place, PlacePattern, PlacesResponse } from "src/types";
+
+// TODO: 各個別のテーマ別に生成できるようにする
+// TODO: 旅行の日程に応じて、動的にスポット数を決める
 
 export function generateRecommendedRoutes(
     spots: PlacesResponse | undefined,
@@ -29,3 +33,54 @@ export function generateRecommendedRoutes(
 
     return recommendedRoutes;
 }
+
+class GenerateCombineSpot {
+
+    basedThemeCombineSpot(
+        recommendSpots: IFetchAllRecommendSpot[],
+        restaurants: PlacesResponse | undefined,
+        hotels: PlacesResponse | undefined
+    ): PlacePattern[] {
+
+        // TODO: 現状はSpot数は固定。ゆくゆくは動的にしたい
+
+        const result: PlacePattern[] = [];
+        if (!restaurants || !hotels) return result;
+
+        // COMMENT: keyword毎のプランを返却する
+        const copyRecommendSpots = JSON.parse(JSON.stringify(recommendSpots)) as IFetchAllRecommendSpot[];
+        const copyRestaurants = JSON.parse(JSON.stringify(restaurants)) as PlacesResponse;
+        const copyHotels = JSON.parse(JSON.stringify(hotels)) as PlacesResponse;
+
+        const themeBasedPatterns = copyRecommendSpots.map(
+            recommendSpot => this.generateOneCombineRoute(recommendSpot, copyRestaurants, copyHotels)
+        ) 
+
+        // TODO: keywordを組み合わせたプランも返却したい
+
+        return themeBasedPatterns
+    }
+
+    private generateOneCombineRoute(
+        recommendSpot: IFetchAllRecommendSpot,
+        restaurants: PlacesResponse,
+        hotels: PlacesResponse
+    ): PlacePattern {
+
+        // 観光スポットの抽出
+        const recommendSpots = recommendSpot.places.splice(0, 4);
+
+        // ホテルの抽出
+        const hotel = hotels.places.splice(0, 1);
+
+        // 食事場所の抽出
+        const eatingSpots = restaurants.places.splice(0, 2);
+
+        return {
+            theme: recommendSpot.keyword,
+            pleaces: [...recommendSpots, ...hotel, ...eatingSpots]
+        }
+    }
+}
+
+export default GenerateCombineSpot;

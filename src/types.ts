@@ -90,10 +90,35 @@ export type Photo = {
     v2用の型
 */
 
+export type v2ReqSpot = {
+    id: string;
+    spotName: string;
+    spotImgSrc: string;
+    spotImgAlt: string;
+    location: { lat: number, lng: number}
+    type: string[];
+    photoReference?: string;
+}
+
+export type v2RouteSpot = {
+    displayName: {
+        text: string,
+        languageCode: string,
+    };
+    types: string[];
+    rating: number;
+    userRatingCount: number;
+    location: {
+        latitude: number,
+        longitude: number,
+    },
+    place_id: string
+}
+
 export type v2SearchSpots = {
-    spots?: Spot[],
+    spots: v2ReqSpot[],
     area?: string,
-    depatureAt: Spot[],
+    depatureAt: Spot,
     date: {
         depatureDay: string,
         returnDay: string,
@@ -102,12 +127,38 @@ export type v2SearchSpots = {
     condition?: Condition
 }
 
+export type v2RoutesReq = {
+    originSpot: v2RouteSpot,
+    waypoints: v2RouteSpot[],
+    destinationSpot: v2RouteSpot,
+}
+
 type Condition = {
     eating: string[],
     wantedDo: string[],
     hotel: string[]
 }
 
+export type v2PlanDetailResponse = {
+    basicInfo: BasicInfo,
+    plan: v2Plan
+}
+
+export type v2Plan = v2DayPlan[]
+
+export type v2DayPlan = {
+    Routes: v2Route[],
+}
+
+export type v2Route = v2SpotCard | TrafficCard
+
+export type v2SpotCard = {
+    category: "SPOT",
+    spot: v2RouteSpot,
+    arrived_at: string,
+    departure_at: string,
+    type: SpotType
+}
 
 /**
 
@@ -120,9 +171,17 @@ export type PlacesResponse = {
 }
 
 export type Place = {
-    displayName: string;
+    displayName: {
+        text: string,
+        languageCode: string,
+    };
     types: string[];
     rating: number;
     userRatingCount: number;
-    location: LatLngLiteral
+    location: LatLng
+}
+
+export type PlacePattern = {
+    theme: string;
+    pleaces : Place[];
 }

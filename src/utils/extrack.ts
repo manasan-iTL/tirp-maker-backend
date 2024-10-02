@@ -8,7 +8,7 @@ export async function fetchSpotsViaV2TextSearch(keyword: string, places?: string
     const requestHeader = new Headers({
         'Content-Type': 'application/json',
         // FieldMaskに指定できる値は公式リファレンスを参照
-        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating',
         'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY
     })
 
@@ -41,6 +41,7 @@ export async function fetchSpotsViaV2TextSearch(keyword: string, places?: string
         return response
     } catch (error) {
         console.log(error)
+        return { places: [] };
     }
 }
 
@@ -82,7 +83,6 @@ export async function fetchSpotsViaV2NearBySearch() {
 
         const response = await rawResponse.json()
 
-        console.log(response)
     } catch (error) {
         console.log(error)
     }

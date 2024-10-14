@@ -1,23 +1,23 @@
 import path from "path";
-import { DayPlan, Plan, Route, SpotCard, TrafficCard, TrafficRoute, v2DayPlan, v2Plan, v2Route, v2RouteSpot, v2RoutesReq, v2SpotCard } from "src/types";
+import { DayPlan, Plan, Route, SpotCard, TrafficCard, TrafficRoute, v2DayPlan, v2Plan, v2ReqSpot, v2Route, v2RoutesReq, v2SpotCard } from "src/types";
 import { Graph, NewGraph } from "./builtGraph";
 import { PlaceType } from "src/const/placeTypes";
 import { TimeConstraints } from "./calcRoutes";
 
 interface ConvertPlanArgs {
-    spots: v2RouteSpot[] | undefined,
+    spots: v2ReqSpot[] | undefined,
     graph: Graph
 }
 
 interface NewGraphConvertPlanArgs {
-    spots: v2RouteSpot[] | undefined,
+    spots: v2ReqSpot[] | undefined,
     graph: NewGraph
 }
 
 class SearchRoutes {
     private _spots: v2RoutesReq;
-    private _eatings: v2RouteSpot[];
-    private _mustSpots: v2RouteSpot[];
+    private _eatings: v2ReqSpot[];
+    private _mustSpots: v2ReqSpot[];
 
     constructor(args: v2RoutesReq) {
         this._spots = args;
@@ -68,10 +68,10 @@ class SearchRoutes {
 
         return {
             [lunch]: [
-                [ 60*60*4, 60*60*6 ]
+                [ 60*60*3, 60*60*6 ]
             ],
             [dinner]: [
-                [ 60*60*10, 60*60*12 ]
+                [ 60*60*8, 60*60*10 ]
             ]
         }
     }
@@ -83,11 +83,11 @@ class SearchRoutes {
         args: {
         path: string[],
     } | null
-    ): v2RouteSpot[] | undefined {
+    ): v2ReqSpot[] | undefined {
         if (!args) return undefined
 
         const originalSpots = [this._spots.originSpot, ...this._spots.waypoints, this._spots.destinationSpot]
-        const spots = args.path.map(id => originalSpots.find(spot => spot.place_id === id)) as v2RouteSpot[];
+        const spots = args.path.map(id => originalSpots.find(spot => spot.place_id === id)) as v2ReqSpot[];
         return spots
     }
 
@@ -266,7 +266,11 @@ class SearchRoutes {
 
             // COMMENT: 経由地を通るときの処理
             const arrive_at = this._formatDateString(dayTime)
-            const { arriveTime, stayTime } = this._extrackTime(i, spots, graph);
+            const { stayTime } = this._extrackWaypointTime(i, spots, graph);
+            if (spots[i].place_id === "ChIJVRJTL8dgGWARTKeBxFw82yE") {
+                console.log("ステイ時間")
+                console.log(stayTime)
+            }
             dayTime.setSeconds(dayTime.getSeconds() + stayTime);
             const depature_at = this._formatDateString(dayTime)
             
@@ -280,6 +284,8 @@ class SearchRoutes {
 
             routes.push(waypointCard)
 ;
+            const { arriveTime } = this._extrackTime(i, spots, graph);
+
             dayTime.setSeconds(dayTime.getSeconds() + arriveTime);
 
             const trafficRoute: TrafficRoute = {
@@ -307,8 +313,21 @@ class SearchRoutes {
         return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
-    private _extrackTime(currentIndex: number, spots: v2RouteSpot[], graph: NewGraph): { arriveTime: number, stayTime: number } {
+    private _extrackTime(currentIndex: number, spots: v2ReqSpot[], graph: NewGraph): { arriveTime: number, stayTime: number } {
         const nextNode = graph[spots[currentIndex].place_id].find(node => node.to === spots[currentIndex + 1].place_id);
+
+        const arriveTime = nextNode?.travelTime ?? 0;
+        const stayTime = nextNode?.stayTime ?? 0;
+
+        return {
+            arriveTime,
+            stayTime
+        }
+    }
+
+    private _extrackWaypointTime(currentIndex: number, spots: v2ReqSpot[], graph: NewGraph): { arriveTime: number, stayTime: number } {
+        const nextNode = graph[spots[currentIndex - 1].place_id].find(node => node.to === spots[currentIndex].place_id);
+
         const arriveTime = nextNode?.travelTime ?? 0;
         const stayTime = nextNode?.stayTime ?? 0;
 

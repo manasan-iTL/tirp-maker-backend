@@ -1,5 +1,5 @@
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
-import { v2RouteSpot, v2RoutesReq } from "src/types";
+import { v2ReqSpot, v2RoutesReq } from "src/types";
 
 interface genBodyRequestArgs {
     locations: Location[],
@@ -45,7 +45,7 @@ export interface RouteMatrixResBody {
 class GRoutesMatrixRepo {
 
     private GOOGLE_API_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
-    private original_spots: v2RouteSpot[] = []
+    private original_spots: v2ReqSpot[] = []
 
 
     constructor(args: v2RoutesReq) {

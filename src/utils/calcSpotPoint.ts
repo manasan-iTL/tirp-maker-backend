@@ -13,11 +13,11 @@ interface Rectangle {
 class CalcSpotPoint {
     
     public calcReqtanglePoint(spot: v2ReqSpot) : Rectangle {
-        const { lat, lng } = spot.location
+        const { latitude, longitude } = spot.location
         const bearings = [45, 225] // 北東(high) 南西(low)
         const distance = 25000 // 50kn
 
-        const results = bearings.map((bearing) => this._calculateDestinationPoint(lat, lng, distance, bearing))
+        const results = bearings.map((bearing) => this._calculateDestinationPoint(latitude, longitude, distance, bearing))
 
         return {
             high: results[0],

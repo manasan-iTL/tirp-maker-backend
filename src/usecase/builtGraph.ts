@@ -1,27 +1,27 @@
 import { RouteMatrixResBody } from "src/repositories/gRoutesMatrixRepo"
-import { v2RouteSpot } from "src/types"
+import { v2ReqSpot } from "src/types"
 import { calcAverageStayTime } from "src/utils/calcAverageStayTime"
 
 interface GetDistanceArgs {
-    spots: v2RouteSpot[],
+    spots: v2ReqSpot[],
     routes: RouteMatrixResBody[]
 }
 
 interface GetNewDistanceArgs {
-    spots: v2RouteSpot[],
+    spots: v2ReqSpot[],
     routes: RouteMatrixResBody[]
 }
 
 export interface Distance {
-    origin: v2RouteSpot,
-    destination: v2RouteSpot,
+    origin: v2ReqSpot,
+    destination: v2ReqSpot,
     durationSecond: number,
     meters: number
 }
 
 export interface NewDistance {
-    origin: v2RouteSpot,
-    destination: v2RouteSpot,
+    origin: v2ReqSpot,
+    destination: v2ReqSpot,
     durationSecond: number,
     meters: number,
     stayedTime: number,

@@ -219,9 +219,6 @@ class CalcRoutes {
 
     // 現在の総行動時間が制約を超えた場合は探索終了
     if (currentTotalTime > constraints.maxTotalTime) {
-        console.log(currentTotalTime, constraints.maxTotalTime)
-        console.log("条件に合うパスなし")
-        console.log(mustPassNodes)
         currentPath.pop();  // パスから最後に追加したノードを削除して戻る
         visited.delete(currentNode);
         return;

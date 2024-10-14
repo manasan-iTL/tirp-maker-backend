@@ -3,7 +3,7 @@ import { PlaceType } from 'src/const/placeTypes';
 import GPlacesRepo from 'src/repositories/gPlacesRepo';
 import GRoutesMatrixRepo from 'src/repositories/gRoutesMatrixRepo';
 import { testNewGraph } from 'src/test/graph';
-import { Place, PlacePattern, v2PlanDetailResponse, v2RoutesReq, v2SearchSpots } from 'src/types';
+import { Place, PlacePattern, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
 import BuiltGraph from 'src/usecase/builtGraph';
 import CalcRoutes, { Constraints, TimeConstraints } from 'src/usecase/calcRoutes';
 import { dijkstraWithEnd } from 'src/usecase/dijkstra';
@@ -43,13 +43,9 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
         const gPlaceClient = new GPlacesRepo();
 
         const eatingSpots = await gPlaceClient.fetchEatingSpots({keyword: eating, spot: spots[0]});
-        console.log("おすすめの食事場所");
-        console.log(eatingSpots)
 
         // const recommendSpots = await fetchSpotsViaV2TextSearch(recommend);
         const recommendAllSpots = await gPlaceClient.fetchAllRecommendSpots(recommendConditinos, spots[0]);
-        console.log("おすすめの観光スポット情報")
-        console.log(recommendAllSpots)
 
         // TODO: 楽天APIでもっと詳細な条件で検索できるようにする
         // TODO: キーワードの地名部分を動的にする
@@ -72,32 +68,12 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
             sortedHotelSpots
         )
 
-        // TODO: 空配列時の判定
-
-        // ユーザーが選択したスポット情報を追加する
-        const v2Spots: Place[] = spots.map((spot, index) => {
-
-            spot.type.push("MUST");
+        const resultSpots: PlacePattern[] = newCombineSpots.map(newSpots => {
+            const addPlaces = [...newSpots.places, ...spots];
 
             return {
-                displayName: {
-                    text: spot.spotName,
-                    languageCode: "ja"
-                },
-                types: spot.type,
-                location: spot.location,
-                rating: 4.3,
-                userRatingCount: 570,
-                id: "CHILL_LIKE" + index
-            }
-        })
-
-        const resultSpots: PlacePattern[] = newCombineSpots.map(spots => {
-            const addPlaces = [...spots.pleaces, ...v2Spots];
-
-            return {
-                theme: spots.theme,
-                pleaces: addPlaces
+                theme: newSpots.theme,
+                places: addPlaces
             }
         })
         
@@ -127,8 +103,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
 
         const apiReqBody = gMatrixRepo.genBodyRequest({ locations: convertLocation})
 
-        console.log("リクエストボディ")
-        console.dir(apiReqBody, { depth: null, colors: true })
+        // console.log("リクエストボディ")
+        // console.dir(apiReqBody, { depth: null, colors: true })
 
         const response = await gMatrixRepo.requestRouteMatrix(apiReqBody);
 
@@ -145,8 +121,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // console.log("Graph")
         // console.dir(graph, { depth: null, colors: true })
 
-        // console.log("New Graph")
-        // console.dir(newGraph, { depth: null, colors: true })
+        console.log("New Graph")
+        console.dir(newGraph, { depth: null, colors: true })
 
         const searchRoutes = new SearchRoutes(req.body);
         const origin = searchRoutes.getOriginId();
@@ -181,7 +157,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         console.log("スポット情報が入ったパス")
         console.log(resultSpots)
 
-        const resultPlan = searchRoutes.v2NewGraphConvertPlan({ spots: resultSpots, graph: testNewGraph })
+        const resultPlan = searchRoutes.v2NewGraphConvertPlan({ spots: resultSpots, graph: newGraph })
         console.log("最終的なプラン")
         console.dir(resultPlan, { depth: null, colors: true })
 

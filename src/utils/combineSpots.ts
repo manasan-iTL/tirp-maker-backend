@@ -1,6 +1,6 @@
 
 import { IFetchAllRecommendSpot } from "src/repositories/gPlacesRepo";
-import { Place, PlacePattern, PlacesResponse } from "src/types";
+import { Place, PlacePattern, PlacesResponse, v2ReqSpot } from "src/types";
 
 // TODO: 各個別のテーマ別に生成できるようにする
 // TODO: 旅行の日程に応じて、動的にスポット数を決める
@@ -69,16 +69,49 @@ class GenerateCombineSpot {
 
         // 観光スポットの抽出
         const recommendSpots = recommendSpot.places.splice(0, 4);
+        const conV2ReqRecommendSpots: v2ReqSpot[] = recommendSpots.map(spot => ({
+            place_id: spot.id,
+            spotName: spot.displayName.text,
+            spotImgSrc: "",
+            spotImgAlt: "",
+            location: spot.location,
+            rating: spot.rating,
+            userRatingCount: spot.userRatingCount,
+            formattedAddress: spot.formattedAddress,
+            types: spot.types
+        }))
 
         // ホテルの抽出
         const hotel = hotels.places.splice(0, 1);
+        const conV2ReqHotel: v2ReqSpot[] = hotel.map(spot => ({
+            place_id: spot.id,
+            spotName: spot.displayName.text,
+            spotImgSrc: "",
+            spotImgAlt: "",
+            location: spot.location,
+            rating: spot.rating,
+            userRatingCount: spot.userRatingCount,
+            formattedAddress: spot.formattedAddress,
+            types: spot.types
+        }))
 
         // 食事場所の抽出
         const eatingSpots = restaurants.places.splice(0, 2);
+        const conV2ReqEatingSpots: v2ReqSpot[] = eatingSpots.map(spot => ({
+            place_id: spot.id,
+            spotName: spot.displayName.text,
+            spotImgSrc: "",
+            spotImgAlt: "",
+            location: spot.location,
+            rating: spot.rating,
+            userRatingCount: spot.userRatingCount,
+            formattedAddress: spot.formattedAddress,
+            types: spot.types
+        }))
 
         return {
             theme: recommendSpot.keyword,
-            pleaces: [...recommendSpots, ...hotel, ...eatingSpots]
+            places: [...conV2ReqRecommendSpots, ...conV2ReqHotel, ...conV2ReqEatingSpots]
         }
     }
 }

@@ -91,28 +91,16 @@ export type Photo = {
 */
 
 export type v2ReqSpot = {
-    id: string;
+    place_id: string,
     spotName: string;
     spotImgSrc: string;
     spotImgAlt: string;
-    location: { lat: number, lng: number}
-    type: string[];
-    photoReference?: string;
-}
-
-export type v2RouteSpot = {
-    displayName: {
-        text: string,
-        languageCode: string,
-    };
-    types: string[];
+    location: { latitude: number, longitude: number}
     rating: number;
     userRatingCount: number;
-    location: {
-        latitude: number,
-        longitude: number,
-    },
-    place_id: string
+    types: string[];
+    formattedAddress: string,
+    photoReference?: string;
 }
 
 export type v2SearchSpots = {
@@ -128,9 +116,9 @@ export type v2SearchSpots = {
 }
 
 export type v2RoutesReq = {
-    originSpot: v2RouteSpot,
-    waypoints: v2RouteSpot[],
-    destinationSpot: v2RouteSpot,
+    originSpot: v2ReqSpot,
+    waypoints: v2ReqSpot[],
+    destinationSpot: v2ReqSpot,
 }
 
 type Condition = {
@@ -154,7 +142,7 @@ export type v2Route = v2SpotCard | TrafficCard
 
 export type v2SpotCard = {
     category: "SPOT",
-    spot: v2RouteSpot,
+    spot: v2ReqSpot,
     arrived_at: string,
     departure_at: string,
     type: SpotType
@@ -170,7 +158,20 @@ export type PlacesResponse = {
     places: Place[]
 }
 
+type v2GPhoto = {
+    name: string,
+    widthPx: number,
+    heightPx: number
+}
+
+
+export type PlacePhotoUriResponse = {
+    name: string,
+    photoUri: string
+}
+
 export type Place = {
+    id: string,
     displayName: {
         text: string,
         languageCode: string,
@@ -178,10 +179,12 @@ export type Place = {
     types: string[];
     rating: number;
     userRatingCount: number;
-    location: LatLng
+    location: { latitude: number, longitude: number},
+    formattedAddress: string,
+    photos: v2GPhoto[]
 }
 
 export type PlacePattern = {
     theme: string;
-    pleaces : Place[];
+    places : v2ReqSpot[];
 }

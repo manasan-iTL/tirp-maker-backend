@@ -40,6 +40,7 @@ interface IFetchTextSearchBodyArgs {
 }
 
 export interface IFetchPlacePhotoRequestArgs {
+    place_id: string,
     photoId: string,
     maxHeightPx: number,
     maxWidthPx: number,
@@ -105,7 +106,7 @@ class GPlacesRepo {
 
         const searchParams = new URLSearchParams(params).toString();
 
-        const requestUrl = `${this._PHOTO_URL}/${args.photoId}/media?${searchParams}` 
+        const requestUrl = `${this._PHOTO_URL}/places/${args.place_id}/photos/${args.photoId}/media?${searchParams}` 
         
         try {
             const rawPhoto = await fetch(requestUrl, {

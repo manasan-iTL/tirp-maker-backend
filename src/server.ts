@@ -42,11 +42,29 @@ app.get('/api/spots', async (req: Request, res: Response) => {
         console.log(result)
 
         const requestPromise: Promise<v2ReqSpot>[] = result.places.map(async place => {
-            const requestHeader = {
-                photoId: place.photos[0].name,
+            const photoId = place.photos[0].name.split("/").pop();
+
+            if (!photoId) {
+                return {
+                    place_id: place.id,
+                    spotName: place.displayName.text,
+                    spotImgSrc: "",
+                    spotImgAlt: "",
+                    location: place.location,
+                    types: place.types,
+                    rating: place.rating,
+                    userRatingCount: place.userRatingCount,
+                    formattedAddress: place.formattedAddress,
+                    photoReference: place.photos[0],
+                }
+            }
+
+            const requestHeader: IFetchPlacePhotoRequestArgs = {
+                photoId: photoId,
                 maxHeightPx: place.photos[0].heightPx ?? 100,
                 maxWidthPx: place.photos[0].widthPx ?? 200,
-                skipHttpRedirect: true
+                skipHttpRedirect: true,
+                place_id: place.id
             }
 
             const request = await gPlacesRepo.fetchPhtoSingleUri(requestHeader);
@@ -61,7 +79,7 @@ app.get('/api/spots', async (req: Request, res: Response) => {
                 rating: place.rating,
                 userRatingCount: place.userRatingCount,
                 formattedAddress: place.formattedAddress,
-                photoReference: request.photoUri,
+                photoReference: place.photos[0],
             }
         })
 

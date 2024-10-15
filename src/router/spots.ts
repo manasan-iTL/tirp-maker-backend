@@ -1,9 +1,9 @@
 import express, { Request, Response } from 'express';
 import { PlaceType } from 'src/const/placeTypes';
-import GPlacesRepo from 'src/repositories/gPlacesRepo';
+import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from 'src/repositories/gPlacesRepo';
 import GRoutesMatrixRepo from 'src/repositories/gRoutesMatrixRepo';
 import { testNewGraph } from 'src/test/graph';
-import { Place, PlacePattern, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
+import { PhotoRequestParams, PhotoRequestQueryParams, Place, PlacePattern, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
 import BuiltGraph from 'src/usecase/builtGraph';
 import CalcRoutes, { Constraints, TimeConstraints } from 'src/usecase/calcRoutes';
 import { dijkstraWithEnd } from 'src/usecase/dijkstra';
@@ -90,6 +90,32 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
     
 });
 
+apiRouter.get('/places/:placeId/photo/:photoId', async (req: Request<PhotoRequestParams, {}, {}, PhotoRequestQueryParams>, res: Response) => {
+    const { photoId, placeId } = req.params;
+    const { heightPx, widthPx } = req.query;
+
+    if (!heightPx || !widthPx) {
+        console.error("Width/Heightの情報は必須です")
+        return res.sendStatus(404)
+    }
+
+    const numHeight = Number(heightPx);
+    const numWidth = Number(widthPx);
+
+    const gPlaceClient = new GPlacesRepo();
+
+    const header: IFetchPlacePhotoRequestArgs = {
+        photoId: photoId,
+        maxHeightPx: numHeight,
+        maxWidthPx: numWidth,
+        skipHttpRedirect: true,
+        place_id: placeId
+    }
+
+    const imgUrlObj = await gPlaceClient.fetchPhtoSingleUri(header)
+
+    return res.json(imgUrlObj)
+})
 
 // TODO: Routesを生成するアルゴリズムを考える、設計する
 // TODO: Routesを生成する関数を実装する

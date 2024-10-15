@@ -3,20 +3,23 @@ import cors from 'cors'
 import { Request, Response } from 'express';
 import 'dotenv/config'
 import { Client, FindPlaceFromTextRequest, PlacePhotoRequest, Language, LatLngLiteral, PlaceInputType, PlacesNearbyRequest, TextSearchRequest, PlaceData, GeocodeRequest, DirectionsRequest, TravelMode, PlacesNearbyRanking } from "@googlemaps/google-maps-services-js";
-import { ConvertSpot, DayPlan, Photo, PhotosRequestBody, PhotosResponseBody, PlanDetailsResponse, PlanRequestBody, Route, Spot, SpotCard, SpotType, TrafficCard, TrafficRoute } from './types';
+import { ConvertSpot, DayPlan, Photo, PhotosRequestBody, PhotosResponseBody, PlacesResponse, PlanDetailsResponse, PlanRequestBody, Route, Spot, SpotCard, SpotType, TrafficCard, TrafficRoute, v2ReqSpot } from './types';
 import axios from 'axios';
 import { start } from 'repl';
 import { calcNextDate, convertRoutes, convertSpots } from './utils/convertRoutes';
 import { createDirectionRequest } from './utils/fetch';
+import { apiRouter } from './router/spots';
+import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from './repositories/gPlacesRepo';
 const app = express();
 const port = 8000;
 
 app.use(express.json())
 app.use(cors({
-    origin: 'http://localhost:3000', //アクセス許可するオリジン
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], //アクセス許可するオリジン
     credentials: true, //レスポンスヘッダーにAccess-Control-Allow-Credentials追加
     optionsSuccessStatus: 200 //レスポンスstatusを200に設定
 }))
+app.use('/api/v2/spots', apiRouter)
 
 // 定数系
 const client = new Client({});
@@ -31,66 +34,39 @@ app.get('/api/spots', async (req: Request, res: Response) => {
 
     console.log("Execute")
     const query = req.query ? String(req.query.keyword) : ""
-    const GoogleApiKey = process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY : ""
-
-    const searchPlaceRequest: FindPlaceFromTextRequest = {
-        params: {
-            input: query,
-            inputtype: PlaceInputType.textQuery,
-            language: Language.ja,
-            fields: ["place_id", "types", "name", "types", "place_id", "formatted_address", "photo", "geometry"],
-            key: GoogleApiKey
-        }
-    }
+    const gPlacesRepo = new GPlacesRepo()
 
 
     try {
-        const result = await client.findPlaceFromText(searchPlaceRequest)
+        const result = await gPlacesRepo.searchPlacesWithKeyword(query);
+        console.log(result)
 
-        console.log(result.data.candidates[0].types)
-
-        if (result.data.candidates === undefined || result.data.candidates[0].photos === undefined) {
-            return res.status(500).json({ message: "観光スポットを取得できませんでした。" })
-        }
-
-        const promiseSpots: Promise<Spot>[] = result.data.candidates.map( async (spot) => {
-
-            if (spot.name !== undefined && spot.photos !== undefined && spot.place_id !== undefined && spot.geometry && spot.types) {
-                const photoRequest = {
-                    params: {
-                        photoreference: spot.photos[0].photo_reference,
-                        maxwidth: 300,
-                        key: GoogleApiKey,
-                    }
-                }
-
-                const imgSrc = await axios.get(
-                    `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photoRequest.params.photoreference}&maxwidth=${photoRequest.params.maxwidth}&key=${photoRequest.params.key}`
-                )
-
-                return {
-                    id: spot.place_id,
-                    spotName: spot.name,
-                    spotImgSrc: imgSrc.request.res.responseUrl,
-                    spotImgAlt: spot.name,
-                    location: spot.geometry.location,
-                    type: spot.types
-                }
-
+        const requestPromise: Promise<v2ReqSpot>[] = result.places.map(async place => {
+            const requestHeader = {
+                photoId: place.photos[0].name,
+                maxHeightPx: place.photos[0].heightPx ?? 100,
+                maxWidthPx: place.photos[0].widthPx ?? 200,
+                skipHttpRedirect: true
             }
 
+            const request = await gPlacesRepo.fetchPhtoSingleUri(requestHeader);
+
             return {
-                id: spot.place_id? spot.place_id : "",
-                spotName: spot.name ? spot.name : "",
-                spotImgAlt: spot.name ? spot.name : "",
-                spotImgSrc: spot.name ? spot.name : "",
-                location: spot.geometry ? spot.geometry.location : "",
-                type: []
+                place_id: place.id,
+                spotName: place.displayName.text,
+                spotImgSrc: request.photoUri ?? "",
+                spotImgAlt: "",
+                location: place.location,
+                types: place.types,
+                rating: place.rating,
+                userRatingCount: place.userRatingCount,
+                formattedAddress: place.formattedAddress,
+                photoReference: request.photoUri,
             }
         })
 
-        const resultSpots: Spot[] = await Promise.all(promiseSpots)
-        return res.json(resultSpots)
+        const response = await Promise.all(requestPromise);
+        return res.json(response)
 
     } catch (error) {
         console.log(error)

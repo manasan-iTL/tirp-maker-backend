@@ -100,7 +100,7 @@ export type v2ReqSpot = {
     userRatingCount: number;
     types: string[];
     formattedAddress: string,
-    photoReference?: string;
+    photoReference: v2GPhoto;
 }
 
 export type v2SearchSpots = {
@@ -146,6 +146,24 @@ export type v2SpotCard = {
     arrived_at: string,
     departure_at: string,
     type: SpotType
+}
+
+
+/**
+ * 
+ 
+    APIのリクエストとレスポンスの型
+
+ */
+
+export interface PhotoRequestParams {
+    photoId: string,
+    placeId: string
+}
+
+export interface PhotoRequestQueryParams {
+    heightPx?:  string,
+    widthPx?: string
 }
 
 /**

@@ -78,7 +78,8 @@ class GenerateCombineSpot {
             rating: spot.rating,
             userRatingCount: spot.userRatingCount,
             formattedAddress: spot.formattedAddress,
-            types: spot.types
+            types: spot.types,
+            photoReference: spot.photos[0]
         }))
 
         // ホテルの抽出
@@ -92,7 +93,8 @@ class GenerateCombineSpot {
             rating: spot.rating,
             userRatingCount: spot.userRatingCount,
             formattedAddress: spot.formattedAddress,
-            types: spot.types
+            types: spot.types,
+            photoReference: spot.photos[0]
         }))
 
         // 食事場所の抽出
@@ -106,7 +108,8 @@ class GenerateCombineSpot {
             rating: spot.rating,
             userRatingCount: spot.userRatingCount,
             formattedAddress: spot.formattedAddress,
-            types: spot.types
+            types: spot.types,
+            photoReference: spot.photos[0]
         }))
 
         return {

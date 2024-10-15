@@ -19,16 +19,16 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
     // const reqBody = req.body
 
     // Condition
-    const eating = "山梨 おすすめの食事";
-    const recommend = "山梨 名所";
-    const hotel = "山梨 温泉";
+    const eating = "おすすめの食事";
+    const recommend = "名所";
+    const hotel = "温泉";
 
     // TODO: フロント側でareaの値を返す、無い場合はnull
-    const area = req.body.area ?? "山梨"
+    // const area = req.body.area ?? "山梨"
     const spots = req.body.spots;
 
     // 検索キーワードを生成する
-    const recommendConditinos = req.body.condition?.wantedDo ?? ["山梨 おすすめ観光スポット"]
+    const recommendConditinos = req.body.condition?.wantedDo ?? ["おすすめ観光スポット"]
 
     try {
 

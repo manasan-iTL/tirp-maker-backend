@@ -76,7 +76,7 @@ class GPlacesRepo {
         const requestHeader = header ?? new Headers({
             'Content-Type': 'application/json',
             // FieldMaskに指定できる値は公式リファレンスを参照
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating',
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating,places.photos',
             'X-Goog-Api-Key': this._GOOGLE_API_KEY
         })
 
@@ -112,7 +112,7 @@ class GPlacesRepo {
             const rawPhoto = await fetch(requestUrl, {
                 method: "GET",
             })
-
+            
             const photo: PlacePhotoUriResponse = await rawPhoto.json();
 
             return photo

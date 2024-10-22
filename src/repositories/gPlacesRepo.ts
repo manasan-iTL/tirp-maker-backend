@@ -2,7 +2,7 @@ import { response } from "express";
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
 import { PlaceType } from "src/const/placeTypes";
 import { fetchSpotsTextSearch } from "src/lib/googlePlacesApi";
-import { PlacePhotoUriResponse, PlacesResponse, Spot, v2ReqSpot } from "src/types";
+import { PlacePhotoUriResponse, PlacesResponse, Spot, v2PlaceDetail, v2ReqSpot } from "src/types";
 import CalcSpotPoint from "src/utils/calcSpotPoint";
 
 export interface IFetchAllRecommendSpot extends PlacesResponse {
@@ -39,6 +39,10 @@ interface IFetchTextSearchBodyArgs {
     pageToken?: string,
 }
 
+interface IFetchPlaceDetailHeaderArgs {
+    placeId: string
+}
+
 export interface IFetchPlacePhotoRequestArgs {
     place_id: string,
     photoId: string,
@@ -67,6 +71,7 @@ class GPlacesRepo {
     private _GOOGLE_API_KEY = GOOGLE_PLACES_API_KEY;
     private _BASE_URL = "https://places.googleapis.com/v1/places:searchText";
     private _PHOTO_URL = "https://places.googleapis.com/v1";
+    private _DETAIL_URL = "https://places.googleapis.com/v1/places"
 
 
 
@@ -81,7 +86,7 @@ class GPlacesRepo {
         })
 
         try {
-            const rawResponse = await fetch(`${this._BASE_URL}`, {
+            const rawResponse = await fetch(`${this._BASE_URL}?languageCode=ja`, {
                 method: "POST",
                 headers: requestHeader,
                 body: JSON.stringify(body)
@@ -93,6 +98,28 @@ class GPlacesRepo {
         } catch (error) {
             console.log(error)
             return { places: [] };
+        }
+    }
+
+    private async _fetchPlaceDetail(args: IFetchPlaceDetailHeaderArgs) {
+
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': this._GOOGLE_API_KEY,
+            'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,types,userRatingCount,rating,photos,nationalPhoneNumber,websiteUri,regularOpeningHours,priceLevel,editorialSummary'
+        })
+
+        try {
+            const requestUri = `${this._DETAIL_URL}/${args.placeId}?languageCode=ja`
+            const rawResponse = await fetch(requestUri, {
+                method: "GET",
+                headers: headers
+            })
+
+            const response: v2PlaceDetail = await rawResponse.json();
+            return response
+        } catch (error) {
+            console.log(error)
         }
     }
 
@@ -230,6 +257,11 @@ class GPlacesRepo {
         const response = await this._fetchTextSearch(reqBody.body, reqBody.headers);
         const addTypeSpot = this._addType(response, "recommend", true);
         return addTypeSpot
+    }
+
+    async fetchPlaceDetail(place_id: string) {
+        const response = await this._fetchPlaceDetail({ placeId: place_id });
+        return response
     }
 
     async fetchAllRecommendSpots(keywords: string[], argSpot: v2ReqSpot): Promise<IFetchAllRecommendSpot[]> {

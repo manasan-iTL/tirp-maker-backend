@@ -3,7 +3,7 @@ import { PlaceType } from 'src/const/placeTypes';
 import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from 'src/repositories/gPlacesRepo';
 import GRoutesMatrixRepo from 'src/repositories/gRoutesMatrixRepo';
 import { testNewGraph } from 'src/test/graph';
-import { PhotoRequestParams, PhotoRequestQueryParams, Place, PlacePattern, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
+import { PhotoRequestParams, PhotoRequestQueryParams, Place, PlaceDetailRequestParams, PlaceDetailResponse, PlacePattern, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
 import BuiltGraph from 'src/usecase/builtGraph';
 import CalcRoutes, { Constraints, TimeConstraints } from 'src/usecase/calcRoutes';
 import { dijkstraWithEnd } from 'src/usecase/dijkstra';
@@ -89,6 +89,25 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
     }
     
 });
+
+apiRouter.get('/detail/:placeId', async (req: Request<PlaceDetailRequestParams>, res: Response<PlaceDetailResponse | {}>) => {
+    const { placeId } = req.params;
+    
+    const gPlaceClient = new GPlacesRepo();
+    const detailResponse = await gPlaceClient.fetchPlaceDetail(placeId);
+
+    const result = detailResponse ? 
+    {
+        place_id: detailResponse.id,
+        nationalPhoneNumber: detailResponse.nationalPhoneNumber,
+        websiteUri: detailResponse.websiteUri,
+        regularOpeningHours: detailResponse.regularOpeningHours,
+        editorialSummary: detailResponse.editorialSummary,
+        priceLevel: detailResponse.priceLevel
+    }: {}
+
+    return res.json(result)
+})
 
 apiRouter.get('/places/:placeId/photo/:photoId', async (req: Request<PhotoRequestParams, {}, {}, PhotoRequestQueryParams>, res: Response) => {
     const { photoId, placeId } = req.params;

@@ -166,6 +166,23 @@ export interface PhotoRequestQueryParams {
     widthPx?: string
 }
 
+export interface PlaceDetailRequestParams {
+    placeId: string
+}
+
+export interface PlaceDetailResponse {
+    place_id: string,
+    nationalPhoneNumber: string,
+    websiteUri: string,
+    regularOpeningHours: RegularOpeningHours,
+    priceLevel: PriceLevel,
+    editorialSummary: {
+        text: string;
+        languageCode: string
+    },
+    userRatingCount: number;
+}
+
 /**
 
 Google Places APiの型定義
@@ -206,3 +223,80 @@ export type PlacePattern = {
     theme: string;
     places : v2ReqSpot[];
 }
+
+export interface v2PlaceDetail {
+    id: string,
+    displayName: {
+        text: string,
+        languageCode: string,
+    };
+    types: string[];
+    rating: number;
+    userRatingCount: number;
+    location: { latitude: number, longitude: number},
+    formattedAddress: string,
+    photos: v2GPhoto[],
+    nationalPhoneNumber: string,
+    websiteUri: string,
+    regularOpeningHours: RegularOpeningHours,
+    priceLevel: PriceLevel,
+    editorialSummary: {
+        text: string;
+        languageCode: string
+    }
+}
+
+interface RegularOpeningHours {
+    periods: Period[],
+    weekdayDescriptions: string[],
+    secondaryHoursType: SecondaryHoursType,
+    specialDays: SpecialDay[]
+    openNow: boolean
+}
+
+interface Period {
+    open: Point,
+    close: Point
+}
+
+interface Point {
+    date: GDate,
+    truncated: boolean,
+    day: number,
+    hour: number,
+    minute: number
+}
+
+interface GDate {
+    year: number,
+    month: number,
+    day: number
+}
+
+type SecondaryHoursType = 
+    "SECONDARY_HOURS_TYPE_UNSPECIFIED" |
+    "DRIVE_THROUGH" |
+    "HAPPY_HOUR" |
+    "DELIVERY" |
+    "TAKEOUT" |
+    "KITCHEN" |
+    "BREAKFAST" |
+    "LUNCH" |
+    "DINNER" |
+    "BRUNCH" |
+    "PICKUP" |
+    "ACCESS" |
+    "SENIOR_HOURS" |
+    "ONLINE_SERVICE_HOURS"
+
+interface SpecialDay {
+    date: GDate
+}
+
+type PriceLevel = 
+    "PRICE_LEVEL_UNSPECIFIED" |
+    "PRICE_LEVEL_FREE" |
+    "PRICE_LEVEL_INEXPENSIVE" |
+    "PRICE_LEVEL_MODERATE" |
+    "PRICE_LEVEL_EXPENSIVE" |
+    "PRICE_LEVEL_VERY_EXPENSIVE"

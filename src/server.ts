@@ -5,13 +5,18 @@ import 'dotenv/config'
 import { Client, FindPlaceFromTextRequest, PlacePhotoRequest, Language, LatLngLiteral, PlaceInputType, PlacesNearbyRequest, TextSearchRequest, PlaceData, GeocodeRequest, DirectionsRequest, TravelMode, PlacesNearbyRanking } from "@googlemaps/google-maps-services-js";
 import { ConvertSpot, DayPlan, Photo, PhotosRequestBody, PhotosResponseBody, PlacesResponse, PlanDetailsResponse, PlanRequestBody, Route, Spot, SpotCard, SpotType, TrafficCard, TrafficRoute, v2ReqSpot } from './types';
 import axios from 'axios';
-import { start } from 'repl';
 import { calcNextDate, convertRoutes, convertSpots } from './utils/convertRoutes';
 import { createDirectionRequest } from './utils/fetch';
 import { apiRouter } from './router/spots';
 import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from './repositories/gPlacesRepo';
+import redisClient from './lib/redis';
+import session from 'express-session';
+import RedisStore from 'connect-redis';
 const app = express();
 const port = 8000;
+
+// COMMENT: Redisとの接続処理
+redisClient.connect().then(() => console.log("Redisに接続")).catch((e) => console.error("Redisへの接続が失敗しました。" + e))
 
 app.use(express.json())
 app.use(cors({
@@ -19,6 +24,24 @@ app.use(cors({
     credentials: true, //レスポンスヘッダーにAccess-Control-Allow-Credentials追加
     optionsSuccessStatus: 200 //レスポンスstatusを200に設定
 }))
+
+app.use(
+    session({
+        store: new RedisStore({ client: redisClient }),
+        secret: process.env.SECRET_KEY ?? "test-secret-key",
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            secure: process.env.NODE_ENV === 'production',
+            httpOnly: true,
+            maxAge: 1000 * 60 * 60,
+            sameSite: "strict"
+        },
+        name: "chill_trip_id",
+        unset: "destroy",
+        rolling: true
+    })
+)
 app.use('/api/v2/spots', apiRouter)
 
 // 定数系

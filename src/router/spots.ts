@@ -58,6 +58,8 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
         const sortedRecommendAllSpots = sortClient.sortMutipleSpotsByRating(recommendAllSpots)
         const sortedHotelSpots = sortClient.sortSpotsByRatings(hotelSpots)
 
+        req.session.wantDo = recommendConditinos;
+        req.session.recommends = sortedRecommendAllSpots
 
         // 複数通りの旅行プランを生成する
         const generatePatternSpots = new GenerateCombineSpot();
@@ -139,7 +141,6 @@ apiRouter.get('/places/:placeId/photo/:photoId', async (req: Request<PhotoReques
 // TODO: Routesを生成するアルゴリズムを考える、設計する
 // TODO: Routesを生成する関数を実装する
 apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, res) => {
-
     try {
         
         // Google Maxtrix APIへのリクエスト
@@ -149,7 +150,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         const apiReqBody = gMatrixRepo.genBodyRequest({ locations: convertLocation})
 
         // console.log("リクエストボディ")
-        // console.dir(apiReqBody, { depth: null, colors: true })
+        // .dir(apiReqBody, { depth: null, colors: true })
 
         const response = await gMatrixRepo.requestRouteMatrix(apiReqBody);
 
@@ -163,11 +164,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // console.log("New Distance")
         // console.dir(newDistance, { depth: null, colors: true })
 
-        // console.log("Graph")
-        // console.dir(graph, { depth: null, colors: true })
-
-        console.log("New Graph")
-        console.dir(newGraph, { depth: null, colors: true })
+        // console.log("New Graph")
+        // console.dir(newGraph, { depth: null, colors: true })
 
         const searchRoutes = new SearchRoutes(req.body);
         const origin = searchRoutes.getOriginId();
@@ -185,7 +183,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // TODO: 特定の時間帯にいなければならないスポットを動的に計算して取得する
         // COMMNET: 一旦固定値
 
-
         // COMENT: ルート計算用レポの呼び出し
         const calcClient = new CalcRoutes();
         const shortestPathWithCondition = calcClient.v2DfsfindShortestRoute(
@@ -195,16 +192,16 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
             constraints
         )
 
-        console.log("条件付きパス")
-        console.log(shortestPathWithCondition)
+        // console.log("条件付きパス")
+        // console.log(shortestPathWithCondition)
 
         const resultSpots = searchRoutes.convertPathToSpots({ path: shortestPathWithCondition });
-        console.log("スポット情報が入ったパス")
-        console.log(resultSpots)
+        // console.log("スポット情報が入ったパス")
+        // console.log(resultSpots)
 
         const resultPlan = searchRoutes.v2NewGraphConvertPlan({ spots: resultSpots, graph: newGraph })
-        console.log("最終的なプラン")
-        console.dir(resultPlan, { depth: null, colors: true })
+        // console.log("最終的なプラン")
+        // console.dir(resultPlan, { depth: null, colors: true })
 
         const responseFe: v2PlanDetailResponse = {
             basicInfo: {
@@ -216,7 +213,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         }
 
 
-        console.dir(responseFe)
+        // console.dir(responseFe)
 
         return res.json(responseFe)
 

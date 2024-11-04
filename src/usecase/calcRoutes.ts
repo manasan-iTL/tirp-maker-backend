@@ -175,7 +175,6 @@ class CalcRoutes {
       endNode: string,
       constraints: Constraints
     ) : string[] {
-      console.log("Execute v2DFS Func")
       const currentPath: string[] = [];
       const currentTotalTime = 0;  // 初期の総行動時間は0からスタート
       const bestResults: PathResult[] = [];
@@ -189,8 +188,15 @@ class CalcRoutes {
     // 最短経路を見つける
     let shortestRoute: PathResult | null = null;
     for (const result of bestResults) {
-        if (!shortestRoute || result.totalTime < shortestRoute.totalTime) {
-            shortestRoute = result;
+
+        // COMMENT: 最も短いルートを算出する
+        // if (!shortestRoute || result.totalTime < shortestRoute.totalTime) {
+        //     shortestRoute = result;
+        // }
+
+        // COMMENT: 最も多くスポットを巡れるルートを算出
+        if (!shortestRoute || result.path.length > shortestRoute.path.length) {
+          shortestRoute = result;
         }
     }
 
@@ -212,75 +218,75 @@ class CalcRoutes {
       bestResults: PathResult[],
       visited: Set<string>,
       mustPassNodes: Set<string>
-    ) : void {
-    // 現在のノードを訪問済みとしてパスに追加
-    currentPath.push(currentNode);
-    visited.add(currentNode);
-
-    // 現在の総行動時間が制約を超えた場合は探索終了
-    if (currentTotalTime > constraints.maxTotalTime) {
-        currentPath.pop();  // パスから最後に追加したノードを削除して戻る
-        visited.delete(currentNode);
-        return;
-    }
-
-    // 終点に到達した場合、経路を結果に保存
-    if (currentNode === endNode) {
-      // console.log("ここで探索終了")
-      // console.log(currentPath, mustPassNodes)
-      if (mustPassNodes.size === 0) {  // 全ての必須ノードを通過していることを確認
-        const result = new PathResult([...currentPath], currentTotalTime);
-        bestResults.push(result);
+  ): void {
+      // 現在のノードを訪問済みとしてパスに追加
+      currentPath.push(currentNode);
+      visited.add(currentNode);
+  
+      // 現在の総行動時間が制約を超えた場合は探索終了
+      if (currentTotalTime > constraints.maxTotalTime) {
+          currentPath.pop();
+          visited.delete(currentNode);
+          return;
       }
+  
+      // 終点に到達した場合、経路を結果に保存
+      if (currentNode === endNode) {
+          if (mustPassNodes.size === 0) {  // 全ての必須ノードを通過していることを確認
+              const result = new PathResult([...currentPath], currentTotalTime);
+              bestResults.push(result);
+          }
+          currentPath.pop();
+          visited.delete(currentNode);
+          return;
+      }
+  
+      // 現在のノードが必ず通過するノードの集合に含まれているか確認
+      const mustPassNodeIncluded = mustPassNodes.has(currentNode);
+      if (mustPassNodeIncluded) {
+          mustPassNodes.delete(currentNode);  // ノードを集合から削除
+      }
+  
+      // 次の移動先を探索
+      for (const edge of graph[currentNode]) {
+          const nextNode = edge.to;
+  
+          // 既に訪れたノードへの移動をスキップ
+          if (visited.has(nextNode)) {
+              continue;
+          }
+  
+          // 時間制約のチェック
+          if (constraints.timeConstraints[nextNode]) {
+              const timeRanges = constraints.timeConstraints[nextNode];
+              const nextArrivalTime = currentTotalTime + edge.travelTime;
+  
+              let canProceed = false;
+              for (const [startTime, endTime] of timeRanges) {
+                  if (nextArrivalTime >= startTime && nextArrivalTime <= endTime) {
+                      canProceed = true;
+                      break;
+                  }
+              }
+  
+              if (!canProceed) {
+                  continue;  // 時間帯に合わない場合はスキップ
+              }
+          }
+  
+          // 移動時間と滞在時間を加算して再帰的に探索
+          this._dfsWithConditions(graph, nextNode, endNode, currentPath, currentTotalTime + edge.travelTime + edge.stayTime, constraints, bestResults, visited, mustPassNodes);
+      }
+  
+      // mustPassNodesを元の状態に戻す
+      if (mustPassNodeIncluded) {
+          mustPassNodes.add(currentNode);
+      }
+  
+      // 現在のノードをパスから削除して戻る
       currentPath.pop();
       visited.delete(currentNode);
-      return;
-    }
-
-    // 現在のノードが必ず通過するノードの集合に含まれているか確認
-    if (mustPassNodes.has(currentNode)) {
-      mustPassNodes.delete(currentNode);  // ノードを集合から削除
-    }
-
-    // 次の移動先を探索
-    for (const edge of graph[currentNode]) {
-        const nextNode = edge.to;
-
-        // 既に訪れたノードへの移動をスキップ
-        if (visited.has(nextNode)) {
-            continue;
-        }
-
-        // 時間制約のチェック
-        if (constraints.timeConstraints[nextNode]) {
-            const timeRanges = constraints.timeConstraints[nextNode];
-            const nextArrivalTime = currentTotalTime + edge.travelTime;  // 次のノードに到達する時間を秒で計算
-
-            let canProceed = false;
-            for (const [startTime, endTime] of timeRanges) {
-                if (nextArrivalTime >= startTime && nextArrivalTime <= endTime) {
-                    canProceed = true;
-                    break;
-                }
-            }
-
-            if (!canProceed) {
-                continue;  // 時間帯に合わない場合はスキップ
-            }
-        }
-
-        // 現在のmustPassNodesのコピーを作成
-        const newMustPassNodes = new Set(mustPassNodes);
-
-        // 移動時間と滞在時間を加算して再帰的に探索
-        // console.log(currentPath)
-        this._dfsWithConditions(graph, nextNode, endNode, currentPath, currentTotalTime + edge.travelTime + edge.stayTime, constraints, bestResults, visited, newMustPassNodes);
-    }
-
-    // 現在のノードをパスから削除して戻る
-    currentPath.pop();
-    visited.delete(currentNode);
-    }
+  }
 }
 
 export default CalcRoutes

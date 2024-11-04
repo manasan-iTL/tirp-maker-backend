@@ -408,8 +408,6 @@ class GPlacesRepo {
         // COMMENT: Nearby Search
         const reqBody = this._createNeabySearchReqBody({ types, spot });
 
-        console.dir(reqBody, { depth: null, colors: true })
-
         return {
             method: "NEARBY",
             requestBody: reqBody
@@ -423,16 +421,10 @@ class GPlacesRepo {
             if (method === "NEARBY") {
                 const response: PlacesResponse = await this._fetchNearbySearch(requestBody);
 
-                console.log("NearbySearch")
-                console.log(response)
-
                 return response
             }
 
             const response: PlacesResponse = await this._fetchTextSearch(requestBody);
-
-            console.log("Text Search")
-            console.log(response)
 
             return response
         } catch (error) {

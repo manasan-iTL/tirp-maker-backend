@@ -58,6 +58,8 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
         const sortedRecommendAllSpots = sortClient.sortMutipleSpotsByRating(recommendAllSpots)
         const sortedHotelSpots = sortClient.sortSpotsByRatings(hotelSpots)
 
+        req.session.wantDo = recommendConditinos;
+        req.session.recommends = sortedRecommendAllSpots
 
         // 複数通りの旅行プランを生成する
         const generatePatternSpots = new GenerateCombineSpot();
@@ -139,7 +141,6 @@ apiRouter.get('/places/:placeId/photo/:photoId', async (req: Request<PhotoReques
 // TODO: Routesを生成するアルゴリズムを考える、設計する
 // TODO: Routesを生成する関数を実装する
 apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, res) => {
-
     try {
         
         // Google Maxtrix APIへのリクエスト
@@ -162,9 +163,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
 
         // console.log("New Distance")
         // console.dir(newDistance, { depth: null, colors: true })
-
-        // console.log("Graph")
-        // console.dir(graph, { depth: null, colors: true })
 
         console.log("New Graph")
         console.dir(newGraph, { depth: null, colors: true })
@@ -195,12 +193,12 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
             constraints
         )
 
-        console.log("条件付きパス")
-        console.log(shortestPathWithCondition)
+        // console.log("条件付きパス")
+        // console.log(shortestPathWithCondition)
 
         const resultSpots = searchRoutes.convertPathToSpots({ path: shortestPathWithCondition });
-        console.log("スポット情報が入ったパス")
-        console.log(resultSpots)
+        // console.log("スポット情報が入ったパス")
+        // console.log(resultSpots)
 
         const resultPlan = searchRoutes.v2NewGraphConvertPlan({ spots: resultSpots, graph: newGraph })
         console.log("最終的なプラン")

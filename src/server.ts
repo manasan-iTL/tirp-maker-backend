@@ -35,7 +35,7 @@ app.use(
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
             maxAge: 1000 * 60 * 60,
-            sameSite: "none"
+            sameSite: "strict"
         },
         name: "chill_trip_id",
         unset: "destroy",

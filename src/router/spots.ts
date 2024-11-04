@@ -150,7 +150,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         const apiReqBody = gMatrixRepo.genBodyRequest({ locations: convertLocation})
 
         // console.log("リクエストボディ")
-        // console.dir(apiReqBody, { depth: null, colors: true })
+        // .dir(apiReqBody, { depth: null, colors: true })
 
         const response = await gMatrixRepo.requestRouteMatrix(apiReqBody);
 
@@ -164,8 +164,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // console.log("New Distance")
         // console.dir(newDistance, { depth: null, colors: true })
 
-        console.log("New Graph")
-        console.dir(newGraph, { depth: null, colors: true })
+        // console.log("New Graph")
+        // console.dir(newGraph, { depth: null, colors: true })
 
         const searchRoutes = new SearchRoutes(req.body);
         const origin = searchRoutes.getOriginId();
@@ -182,7 +182,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
 
         // TODO: 特定の時間帯にいなければならないスポットを動的に計算して取得する
         // COMMNET: 一旦固定値
-
 
         // COMENT: ルート計算用レポの呼び出し
         const calcClient = new CalcRoutes();
@@ -201,8 +200,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // console.log(resultSpots)
 
         const resultPlan = searchRoutes.v2NewGraphConvertPlan({ spots: resultSpots, graph: newGraph })
-        console.log("最終的なプラン")
-        console.dir(resultPlan, { depth: null, colors: true })
+        // console.log("最終的なプラン")
+        // console.dir(resultPlan, { depth: null, colors: true })
 
         const responseFe: v2PlanDetailResponse = {
             basicInfo: {
@@ -214,7 +213,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         }
 
 
-        console.dir(responseFe)
+        // console.dir(responseFe)
 
         return res.json(responseFe)
 

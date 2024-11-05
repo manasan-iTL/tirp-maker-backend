@@ -106,7 +106,7 @@ export type v2ReqSpot = {
 export type v2SearchSpots = {
     spots: v2ReqSpot[],
     area?: string,
-    depatureAt: Spot,
+    depatureAt: v2ReqSpot,
     date: {
         depatureDay: string,
         returnDay: string,

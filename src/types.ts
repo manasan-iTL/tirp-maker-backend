@@ -1,4 +1,5 @@
 import { LatLng, LatLngLiteral }  from "@googlemaps/google-maps-services-js";
+import { TripDateTime } from "./usecase/validateTripRule";
 
 export type Spot = {
     id: string;
@@ -106,11 +107,12 @@ export type v2ReqSpot = {
 export type v2SearchSpots = {
     spots: v2ReqSpot[],
     area?: string,
-    depatureAt: Spot,
+    depatureAt: v2ReqSpot,
     date: {
         depatureDay: string,
         returnDay: string,
     },
+    activeTimes: TripDateTime[],
     transitWay: 'CAR' | 'train',
     condition?: Condition
 }

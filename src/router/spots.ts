@@ -1,20 +1,22 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { PlaceType } from 'src/const/placeTypes';
 import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from 'src/repositories/gPlacesRepo';
 import GRoutesMatrixRepo from 'src/repositories/gRoutesMatrixRepo';
+import GRouteRepo from 'src/repositories/gRoutesRepo';
 import { testNewGraph } from 'src/test/graph';
 import { PhotoRequestParams, PhotoRequestQueryParams, Place, PlaceDetailRequestParams, PlaceDetailResponse, PlacePattern, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
 import BuiltGraph from 'src/usecase/builtGraph';
 import CalcRoutes, { Constraints, TimeConstraints } from 'src/usecase/calcRoutes';
 import { dijkstraWithEnd } from 'src/usecase/dijkstra';
 import SearchRoutes from 'src/usecase/searchRoutes';
+import ValidateTripRule from 'src/usecase/validateTripRule';
 import GenerateCombineSpot, { generateRecommendedRoutes } from 'src/utils/combineSpots';
 import { fetchSpotsViaV2TextSearch } from 'src/utils/extrack';
 import sortedSpots from 'src/utils/sort';
 // /api 以下のルーティング
 export const apiRouter = express.Router();
 
-apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: Response) => {
+apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: Response, next: NextFunction) => {
 
     // const reqBody = req.body
 
@@ -32,10 +34,33 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
 
     try {
 
+        // COMMENT: ルートの事前バリデーション
+
+
+        // TOOD: 日数が3日未満なら以下のチェックを行う
+        // TOOD: チェック処理
+          // 1 出発地の緯度経度を調べる
+          //   ・現在地の場合ここはスキップ
+          //   ・文字列の場合、市区町村名までを含んだ文字列で緯度経度を調べる
+          // 2 到着地、Spotの緯度経度でRoutes APIにリクエスト
+          //   ・areaはある程度の実装が終わったら考える
+          // 3 かかる時間が（1日の活動時間）×（旅行日数）< 60 × 60 × 4 × （旅行日数）かを計算
+          // 4 エラーならこの時点でエラーレスポンスを返す
+        const validate = new ValidateTripRule({ tripDateTimes: req.body.activeTimes });
+
+        const gRouteRepo = new GRouteRepo();
+
+        const isValid = await validate.isValidTripInfo({
+            origin: req.body.depatureAt,
+            destination: req.body.spots[0],
+            depatureDate: req.body.date.depatureDay,
+            returnedDate: req.body.date.returnDay,
+            gRouteRepo
+        })
+
+        if (!isValid) throw new Error("この条件では旅行プランの生成ができません")
         // TODO: 旅行先の中心点を求める(現状はspotが中心 areaにも対応したい)
-        // TODO: Places APIで検索する長方形の範囲を求める
         // TODO: Routes APIで出発地から中心点までにかかる時間を算出する
-        // TODO: 食事場所の検索処理をRepositoryに移す
         // ユーザーが食事について希望があればそのキーワードを元にSearch
         // デフォルトは「場所 おすすめの食事」
 
@@ -87,7 +112,9 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
          });
 
     } catch (error) {
+        console.log("エラーが発生しました")
         console.log(error)
+        next(error)
     }
     
 });

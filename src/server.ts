@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { NextFunction } from 'express';
 import cors from 'cors'
 import { Request, Response } from 'express';
 import 'dotenv/config'
@@ -570,5 +570,17 @@ app.post("/api/spots/photos", async (req: Request<unknown, unknown, PhotosReques
     const response = await Promise.all(photos)
     res.json({ photos: response })
 })
+
+app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+    // 特定のエラータイプに応じてカスタム処理
+    if (error.name === 'NotFoundError') {
+        res.status(404).json({ success: false, message: 'Resource not found' });
+    } else if (error.name === 'ValidationError') {
+        res.status(400).json({ success: false, message: error.message });
+    } else {
+        // デフォルトの500エラー
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+});
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));

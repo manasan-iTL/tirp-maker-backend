@@ -2,7 +2,7 @@ import { response } from "express";
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
 import { convertJapanese, PlaceType } from "src/const/placeTypes";
 import { fetchSpotsTextSearch } from "src/lib/googlePlacesApi";
-import { PlacePhotoUriResponse, PlacesResponse, Spot, v2PlaceDetail, v2ReqSpot } from "src/types";
+import { PlacePhotoUriResponse, PlacesLocation, PlacesResponse, Spot, v2PlaceDetail, v2ReqSpot } from "src/types";
 import CalcSpotPoint from "src/utils/calcSpotPoint";
 
 export interface IFetchAllRecommendSpot extends PlacesResponse {
@@ -141,6 +141,32 @@ class GPlacesRepo {
         }
     }
 
+    private async _fetchLocationTextSearch(body: IFetchTextSearchBodyArgs, header: Headers | null = null) {
+
+        // TODO: ヘッダーを生成する関数に切り出す
+        const requestHeader = header ?? new Headers({
+            'Content-Type': 'application/json',
+            // FieldMaskに指定できる値は公式リファレンスを参照
+            'X-Goog-FieldMask': 'places.id,places.location',
+            'X-Goog-Api-Key': this._GOOGLE_API_KEY
+        })
+
+        try {
+            const rawResponse = await fetch(`${this._BASE_URL}?languageCode=ja`, {
+                method: "POST",
+                headers: requestHeader,
+                body: JSON.stringify(body)
+            })
+    
+            const response: PlacesLocation = await rawResponse.json()
+    
+            return response
+        } catch (error) {
+            console.log(error)
+            return { places: [] };
+        }
+    }
+
     private async _fetchNearbySearch(body: IFetchNearbySearchBodyArgs, header: Headers | null = null) {
 
         // TODO: ヘッダーを生成する関数に切り出す
@@ -235,6 +261,14 @@ class GPlacesRepo {
         return {
             body,
             headers
+        }
+    }
+
+    private _createLocationReqBody(depaturekeyword: string): IFetchTextSearchBodyArgs {
+        return {
+            textQuery: depaturekeyword,
+            languageCode: "ja",
+            pageSize: 1
         }
     }
 
@@ -441,6 +475,22 @@ class GPlacesRepo {
         const response = await this._fetchTextSearch(reqBody.body, reqBody.headers);
         const addTypeSpot = this._addType(response, "recommend", true);
         return addTypeSpot
+    }
+
+    async getDepatureLocation(origin: v2ReqSpot): Promise<v2ReqSpot> {
+        if (origin.location.latitude !== 0 && origin.location.longitude !== 0) return origin
+
+        const reqBody = this._createLocationReqBody(origin.spotName);
+        const response = await this._fetchLocationTextSearch(reqBody);
+
+        const newOrigin =  {
+            ...origin,
+            location: response.places[0].location
+        }
+
+        console.log(newOrigin)
+        
+        return newOrigin
     }
 
     async fetchPlaceDetail(place_id: string) {

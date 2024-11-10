@@ -195,6 +195,10 @@ export type PlacesResponse = {
     places: Place[]
 }
 
+export type PlacesLocation = {
+    places: LocationPlace[]
+}
+
 type v2GPhoto = {
     name: string,
     widthPx: number,
@@ -205,6 +209,11 @@ type v2GPhoto = {
 export type PlacePhotoUriResponse = {
     name: string,
     photoUri: string
+}
+
+type LocationPlace = {
+    id: string,
+    location: { latitude: number, longitude: number}
 }
 
 export type Place = {

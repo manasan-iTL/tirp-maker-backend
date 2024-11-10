@@ -28,6 +28,11 @@ export type PhotosRequestBody = {
     referenses: photoReference[]
 }
 
+export type SearchSpotsResponseBody = {
+    combineSpots: PlacePattern[],
+    origin: v2ReqSpot
+}
+
 export type PhotosResponseBody = {
     photos: Photo[]
 }

@@ -1,3 +1,4 @@
+import GPlacesRepo from "src/repositories/gPlacesRepo";
 import GRouteRepo from "src/repositories/gRoutesRepo";
 import { v2ReqSpot } from "src/types";
 import { calculateStayDuration } from "src/utils/dates";
@@ -8,7 +9,8 @@ interface IsValidTripInfoArgs {
     depatureDate: string,
     returnedDate: string,
 
-    gRouteRepo: GRouteRepo
+    gRouteRepo: GRouteRepo,
+    gPlacesRepo: GPlacesRepo
 }
 
 export interface TripDateTime {
@@ -44,15 +46,18 @@ class ValidateTripRule {
      * 旅行日数に対して行動時間が旅行日数×4時間未満ならエラーを返す
 
      */
-    public async isValidTripInfo({ origin, destination, depatureDate, returnedDate, gRouteRepo }: IsValidTripInfoArgs) {
+    public async isValidTripInfo({ origin, destination, depatureDate, returnedDate, gRouteRepo, gPlacesRepo }: IsValidTripInfoArgs): Promise<v2ReqSpot> {
+
+        // TODO: 出発地のLocationを取得する
+        const depatureLocation = await gPlacesRepo.getDepatureLocation(origin);
 
         // TODO: 旅行日数の計算
         const { nights, days } = calculateStayDuration(depatureDate, returnedDate);
 
-        if (days >= 3) return true
+        if (days >= 3) return depatureLocation
 
         // TODO: Routes APIへのリクエスト
-        const response = await gRouteRepo.getRouteDuration({ origin, destination });
+        const response = await gRouteRepo.getRouteDuration({ origin: depatureLocation, destination });
         if (!response) throw new Error("ネットワークエラーが起きました")
         
         // TODO: 移動時間のチェック
@@ -63,7 +68,7 @@ class ValidateTripRule {
         if (activeTotalSeconds - durationNum * 2 < 60 * 60 * 4 * days)
             throw new Error("移動時間が長く活動できません")
     
-        return true
+        return depatureLocation
     }
 }
 

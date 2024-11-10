@@ -4,7 +4,7 @@ import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from 'src/repositories/gPlac
 import GRoutesMatrixRepo from 'src/repositories/gRoutesMatrixRepo';
 import GRouteRepo from 'src/repositories/gRoutesRepo';
 import { testNewGraph } from 'src/test/graph';
-import { PhotoRequestParams, PhotoRequestQueryParams, Place, PlaceDetailRequestParams, PlaceDetailResponse, PlacePattern, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
+import { PhotoRequestParams, PhotoRequestQueryParams, Place, PlaceDetailRequestParams, PlaceDetailResponse, PlacePattern, SearchSpotsResponseBody, v2PlanDetailResponse, v2ReqSpot, v2RoutesReq, v2SearchSpots } from 'src/types';
 import BuiltGraph from 'src/usecase/builtGraph';
 import CalcRoutes, { Constraints, TimeConstraints } from 'src/usecase/calcRoutes';
 import { dijkstraWithEnd } from 'src/usecase/dijkstra';
@@ -16,7 +16,7 @@ import sortedSpots from 'src/utils/sort';
 // /api 以下のルーティング
 export const apiRouter = express.Router();
 
-apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: Response, next: NextFunction) => {
+apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: Response<SearchSpotsResponseBody>, next: NextFunction) => {
 
     // const reqBody = req.body
 
@@ -49,16 +49,17 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
         const validate = new ValidateTripRule({ tripDateTimes: req.body.activeTimes });
 
         const gRouteRepo = new GRouteRepo();
+        const gPlacesRepo = new GPlacesRepo()
 
-        const isValid = await validate.isValidTripInfo({
+        const newOrigin = await validate.isValidTripInfo({
             origin: req.body.depatureAt,
             destination: req.body.spots[0],
             depatureDate: req.body.date.depatureDay,
             returnedDate: req.body.date.returnDay,
-            gRouteRepo
+            gRouteRepo,
+            gPlacesRepo
         })
 
-        if (!isValid) throw new Error("この条件では旅行プランの生成ができません")
         // TODO: 旅行先の中心点を求める(現状はspotが中心 areaにも対応したい)
         // TODO: Routes APIで出発地から中心点までにかかる時間を算出する
         // ユーザーが食事について希望があればそのキーワードを元にSearch
@@ -105,10 +106,8 @@ apiRouter.post('/', async (req: Request<unknown, unknown, v2SearchSpots>, res: R
         })
         
         res.json({ 
-            status: "success",
-            data: {
-                combineSpots: resultSpots
-            }
+            combineSpots: resultSpots,
+            origin: newOrigin
          });
 
     } catch (error) {

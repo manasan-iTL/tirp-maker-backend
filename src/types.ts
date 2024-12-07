@@ -30,7 +30,12 @@ export type PhotosRequestBody = {
 
 export type SearchSpotsResponseBody = {
     combineSpots: PlacePattern[],
-    origin: v2ReqSpot
+    origin: v2ReqSpot,
+    activeTimes: TripDateTime[],
+    date: {
+        depatureDay: string,
+        returnDay: string,
+    },
 }
 
 export type PhotosResponseBody = {
@@ -106,7 +111,7 @@ export type v2ReqSpot = {
     userRatingCount: number;
     types: string[];
     formattedAddress: string,
-    photoReference: v2GPhoto;
+    photoReference: v2GPhoto | string;
 }
 
 export type v2SearchSpots = {
@@ -126,6 +131,12 @@ export type v2RoutesReq = {
     originSpot: v2ReqSpot,
     waypoints: v2ReqSpot[],
     destinationSpot: v2ReqSpot,
+    activeTimes: TripDateTime[],
+    date: {
+        depatureDay: string,
+        returnDay: string,
+    },
+    theme: string
 }
 
 type Condition = {
@@ -197,7 +208,8 @@ Google Places APiの型定義
  */
 
 export type PlacesResponse = {
-    places: Place[]
+    places: Place[],
+    nextPageToken?: string
 }
 
 export type PlacesLocation = {

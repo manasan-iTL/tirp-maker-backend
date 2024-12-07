@@ -17,3 +17,27 @@ export function calculateStayDuration(startDateStr: string, endDateStr: string):
 
     return { days, nights };
 }
+
+
+export function calculateElapsedSeconds(
+    baseTime: string,
+    startTime: string,
+    endTime: string
+): { startElapsedSeconds: number; endElapsedSeconds: number } {
+    // 時刻文字列をDateオブジェクトに変換するためのヘルパー関数
+    const timeStringToSeconds = (time: string): number => {
+        const [hours, minutes] = time.split(":").map(Number);
+        return hours * 3600 + minutes * 60;
+    };
+
+    // 基準時刻、開始時刻、終了時刻を秒に変換
+    const baseTimeInSeconds = timeStringToSeconds(baseTime);
+    const startInSeconds = timeStringToSeconds(startTime);
+    const endInSeconds = timeStringToSeconds(endTime) - (60 * 60 * 1);
+
+    // 開始時刻と終了時刻の経過秒を計算
+    const startElapsedSeconds = startInSeconds - baseTimeInSeconds;
+    const endElapsedSeconds = endInSeconds - baseTimeInSeconds;
+
+    return { startElapsedSeconds, endElapsedSeconds };
+}

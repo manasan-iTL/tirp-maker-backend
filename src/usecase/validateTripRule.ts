@@ -21,6 +21,7 @@ export interface TripDateTime {
 class ValidateTripRule {
 
     private activeTimes: number[] = []
+    private days: number = 0;
 
     constructor(args: { tripDateTimes: TripDateTime[] }) {
         const dateTimes = args.tripDateTimes.map(date => {
@@ -41,6 +42,17 @@ class ValidateTripRule {
         this.activeTimes = dateTimes;
     }
 
+    private _setDays(days: number) {
+        this.days = days
+    }
+
+    /**
+     * getDays
+     */
+    public getDays() {
+        return this.days;
+    }
+
     /**
      * isValidTripInfo
      * 旅行日数に対して行動時間が旅行日数×4時間未満ならエラーを返す
@@ -53,6 +65,7 @@ class ValidateTripRule {
 
         // TODO: 旅行日数の計算
         const { nights, days } = calculateStayDuration(depatureDate, returnedDate);
+        this._setDays(days);
 
         if (days >= 3) return depatureLocation
 

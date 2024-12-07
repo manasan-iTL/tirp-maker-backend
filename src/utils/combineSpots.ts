@@ -1,9 +1,21 @@
 
 import { IFetchAllRecommendSpot } from "src/repositories/gPlacesRepo";
-import { Place, PlacePattern, PlacesResponse, v2ReqSpot } from "src/types";
+import { Place, PlacePattern, PlacesResponse, v2ReqSpot, v2SearchSpots } from "src/types";
+import { Request } from "express";
 
 // TODO: 各個別のテーマ別に生成できるようにする
 // TODO: 旅行の日程に応じて、動的にスポット数を決める
+
+interface PlacePatternAddRestSpots extends PlacePattern {
+    leftRecommendSpots: v2ReqSpot[],
+    nextPage?: string
+}
+
+export interface V2ReqSpotWithTheme {
+    spots: v2ReqSpot[],
+    theme: string,
+    nextPage?: string
+}
 
 export function generateRecommendedRoutes(
     spots: PlacesResponse | undefined,
@@ -39,7 +51,8 @@ class GenerateCombineSpot {
     basedThemeCombineSpot(
         recommendSpots: IFetchAllRecommendSpot[],
         restaurants: PlacesResponse | undefined,
-        hotels: PlacesResponse | undefined
+        hotels: PlacesResponse | undefined,
+        request: Request<unknown, unknown, v2SearchSpots>,
     ): PlacePattern[] {
 
         // TODO: 現状はSpot数は固定。ゆくゆくは動的にしたい
@@ -52,69 +65,61 @@ class GenerateCombineSpot {
         const copyRestaurants = JSON.parse(JSON.stringify(restaurants)) as PlacesResponse;
         const copyHotels = JSON.parse(JSON.stringify(hotels)) as PlacesResponse;
 
+        const v2Restaurants = this._convertV2Spots(copyRestaurants);
+        const v2Hotels = this._convertV2Spots(copyHotels);
+
+        // Hotel / Eating spotsを抽出
+        const addRestaurants = v2Restaurants.splice(0, 2);
+        const [addHotel] = v2Hotels.splice(0, 1);
+
+
         const themeBasedPatterns = copyRecommendSpots.map(
-            recommendSpot => this.generateOneCombineRoute(recommendSpot, copyRestaurants, copyHotels)
+            recommendSpot => this.generateOneCombineRoute(recommendSpot, addRestaurants, addHotel)
         ) 
+
+        // セッションへ保存する処理
+        request.session.eatingSpots = v2Restaurants;
+        request.session.recommends = themeBasedPatterns.map(pattern => ({ theme: pattern.theme, spots: pattern.leftRecommendSpots }))
+
+        const resultPatterns: PlacePattern[] = themeBasedPatterns.map(pattern => ({ theme: pattern.theme, places: pattern.places }))
 
         // TODO: keywordを組み合わせたプランも返却したい
 
-        return themeBasedPatterns
+        return resultPatterns
+    }
+
+    private _convertV2Spots(spots: PlacesResponse): v2ReqSpot[] {
+        const v2ReqSpots = spots.places.map(spot => ({
+            place_id: spot.id,
+            spotName: spot.displayName.text,
+            spotImgSrc: "",
+            spotImgAlt: "",
+            location: spot.location,
+            rating: spot.rating,
+            userRatingCount: spot.userRatingCount,
+            formattedAddress: spot.formattedAddress,
+            types: spot.types,
+            photoReference: spot?.photos ? spot.photos[0]: ''
+        }))
+
+        return v2ReqSpots
     }
 
     private generateOneCombineRoute(
         recommendSpot: IFetchAllRecommendSpot,
-        restaurants: PlacesResponse,
-        hotels: PlacesResponse
-    ): PlacePattern {
+        restaurants: v2ReqSpot[],
+        hotel: v2ReqSpot
+    ): PlacePatternAddRestSpots {
 
         // 観光スポットの抽出
-        const recommendSpots = recommendSpot.places.splice(0, 4);
-        const conV2ReqRecommendSpots: v2ReqSpot[] = recommendSpots.map(spot => ({
-            place_id: spot.id,
-            spotName: spot.displayName.text,
-            spotImgSrc: "",
-            spotImgAlt: "",
-            location: spot.location,
-            rating: spot.rating,
-            userRatingCount: spot.userRatingCount,
-            formattedAddress: spot.formattedAddress,
-            types: spot.types,
-            photoReference: spot.photos[0]
-        }))
-
-        // ホテルの抽出
-        const hotel = hotels.places.splice(0, 1);
-        const conV2ReqHotel: v2ReqSpot[] = hotel.map(spot => ({
-            place_id: spot.id,
-            spotName: spot.displayName.text,
-            spotImgSrc: "",
-            spotImgAlt: "",
-            location: spot.location,
-            rating: spot.rating,
-            userRatingCount: spot.userRatingCount,
-            formattedAddress: spot.formattedAddress,
-            types: spot.types,
-            photoReference: spot.photos[0]
-        }))
-
-        // 食事場所の抽出
-        const eatingSpots = restaurants.places.splice(0, 2);
-        const conV2ReqEatingSpots: v2ReqSpot[] = eatingSpots.map(spot => ({
-            place_id: spot.id,
-            spotName: spot.displayName.text,
-            spotImgSrc: "",
-            spotImgAlt: "",
-            location: spot.location,
-            rating: spot.rating,
-            userRatingCount: spot.userRatingCount,
-            formattedAddress: spot.formattedAddress,
-            types: spot.types,
-            photoReference: spot.photos[0]
-        }))
+        const conV2ReqRecommendSpots = this._convertV2Spots(recommendSpot)
+        const addRecommendSpots = conV2ReqRecommendSpots.splice(0, 4);
 
         return {
             theme: recommendSpot.keyword,
-            places: [...conV2ReqRecommendSpots, ...conV2ReqHotel, ...conV2ReqEatingSpots]
+            places: [...addRecommendSpots, ...restaurants, hotel],
+            leftRecommendSpots: conV2ReqRecommendSpots,
+            nextPage: recommendSpot.nextPageToken
         }
     }
 }

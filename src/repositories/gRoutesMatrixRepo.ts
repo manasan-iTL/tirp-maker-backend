@@ -42,15 +42,21 @@ export interface RouteMatrixResBody {
     destinationIndex: number
 }
 
+interface RouteReq {
+    origin: v2ReqSpot, 
+    waypoints: v2ReqSpot[], 
+    destination: v2ReqSpot
+}
+
 class GRoutesMatrixRepo {
 
     private GOOGLE_API_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
     private original_spots: v2ReqSpot[] = []
 
 
-    constructor(args: v2RoutesReq) {
-        const { originSpot, waypoints, destinationSpot } = args;
-        this.original_spots = [originSpot, ...waypoints, destinationSpot]
+    constructor(args: RouteReq) {
+        const { origin, waypoints, destination } = args;
+        this.original_spots = [origin, ...waypoints, destination]
     }
 
     /**
@@ -110,12 +116,12 @@ class GRoutesMatrixRepo {
      * genReqBody
      * 
      */
-    public convertLocationObj(spots: v2RoutesReq) {
+    public convertLocationObj(spots: RouteReq) {
         const origin: Location = { 
             location: {
                 latLng: {
-                    latitude: spots.originSpot.location.latitude,
-                    longitude: spots.originSpot.location.longitude
+                    latitude: spots.origin.location.latitude,
+                    longitude: spots.origin.location.longitude
                 }
             }
         }
@@ -134,8 +140,8 @@ class GRoutesMatrixRepo {
         const destination: Location = { 
             location: {
                 latLng: {
-                    latitude: spots.destinationSpot.location.latitude,
-                    longitude: spots.destinationSpot.location.longitude
+                    latitude: spots.destination.location.latitude,
+                    longitude: spots.destination.location.longitude
                 }
             }
         }

@@ -1,8 +1,8 @@
-import { response } from "express";
+import { Request, response } from "express";
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
 import { convertJapanese, PlaceType } from "src/const/placeTypes";
 import { fetchSpotsTextSearch } from "src/lib/googlePlacesApi";
-import { PlacePhotoUriResponse, PlacesLocation, PlacesResponse, Spot, v2PlaceDetail, v2ReqSpot } from "src/types";
+import { PlacePhotoUriResponse, PlacesLocation, PlacesResponse, Spot, v2PlaceDetail, v2ReqSpot, v2RoutesReq } from "src/types";
 import CalcSpotPoint from "src/utils/calcSpotPoint";
 
 export interface IFetchAllRecommendSpot extends PlacesResponse {
@@ -68,7 +68,8 @@ interface NearbySearchMethod {
 
 interface IDecideSearchMethodArgs {
     value: string,
-    spot: v2ReqSpot
+    spot: v2ReqSpot,
+    days: number
 }
 
 type IDecideSearchMethodResponse = TextSearchMethod | NearbySearchMethod
@@ -88,11 +89,14 @@ export interface IFetchPlacePhotoRequestArgs {
 interface ICreateRecommendSpotReqBody {
     keyword: string,
     spot: v2ReqSpot,
+    days: number,
+    pageToken?: string
 }
 
 interface INearbySearchReqBody {
     types: string[],
     spot: v2ReqSpot,
+    days: number,
 }
 
 interface ICreateHotelReqBody {
@@ -103,6 +107,14 @@ interface ICreateHotelReqBody {
 interface ICreateEatingReqBody {
     keyword: string,
     spot: v2ReqSpot
+}
+
+interface IFetchAddRecommendSpots {
+    theme: string,
+    spot: v2ReqSpot,
+    nextPage?: string,
+    days: number,
+    request: Request<unknown, unknown, v2RoutesReq>
 }
 
 class GPlacesRepo {
@@ -121,7 +133,7 @@ class GPlacesRepo {
         const requestHeader = header ?? new Headers({
             'Content-Type': 'application/json',
             // FieldMaskに指定できる値は公式リファレンスを参照
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating,places.photos',
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating,places.photos,nextPageToken',
             'X-Goog-Api-Key': this._GOOGLE_API_KEY
         })
 
@@ -172,7 +184,7 @@ class GPlacesRepo {
         // TODO: ヘッダーを生成する関数に切り出す
         const requestHeader = header ?? new Headers({
             'Content-Type': 'application/json',
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating,places.photos',
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating,places.photos,nextPageToken',
             'X-Goog-Api-Key': this._GOOGLE_API_KEY
         })
 
@@ -276,6 +288,7 @@ class GPlacesRepo {
 
         // locationRestriction計算
         const calcRectangle = new CalcSpotPoint().calcReqtanglePoint(args.spot)
+        const count = args.days * 10;
 
         return {
             textQuery: args.keyword,
@@ -283,18 +296,20 @@ class GPlacesRepo {
             locationRestriction: {
                 rectangle: calcRectangle
             },
-            pageSize: 15
+            pageSize: count,
+            pageToken: args.pageToken? args.pageToken: ""
         }
     }
 
     private _createNeabySearchReqBody(args: INearbySearchReqBody): IFetchNearbySearchBodyArgs {
         const calcRectangle = new CalcSpotPoint().calcReqtanglePoint(args.spot);
+        const count = args.days * 10
 
         return {
             includedTypes: args.types,
             languageCode: "ja",
             rankPreference: "POPULARITY",
-            maxResultCount: 10,
+            maxResultCount: count,
             locationRestriction: {
                 circle: {
                     center: {
@@ -344,25 +359,75 @@ class GPlacesRepo {
         }
     }
 
-    private _addType(spot: PlacesResponse, searchType: "hotel" | "eating" | "recommend", must: boolean = false): PlacesResponse {
+    private _addType(spot: PlacesResponse, searchType: string, must: boolean = false): PlacesResponse {
         spot.places.forEach(place => {
 
             if (must) {
-                place.types.push(PlaceType.must);
-                return 
+                console.log("MUSTを追加")
+                place.types.push(PlaceType.must); 
             }
 
             switch (searchType) {
-                case "hotel":
+                case PlaceType.hotel:
                     place.types.push(PlaceType.hotel)
                     break;
             
-                case "eating":
+                case PlaceType.eating:
                     place.types.push(PlaceType.eating)
                     break
                 
-                case "recommend":
-                    place.types.push(PlaceType.sightseeing)
+                case PlaceType.amusementPark:
+                    place.types.push(PlaceType.amusementPark)
+                    break;
+
+                case PlaceType.themePark:
+                    place.types.push(PlaceType.themePark)
+                    break;
+
+                case PlaceType.hiking:
+                    place.types.push(PlaceType.hiking)
+                    break;
+                
+                case PlaceType.NaturalScenery:
+                    place.types.push(PlaceType.NaturalScenery)
+                    break;
+                
+                case PlaceType.marineSports:
+                    place.types.push(PlaceType.marineSports)
+                    break;
+
+                case PlaceType.snowSports:
+                    place.types.push(PlaceType.snowSports)
+                    break;
+
+                case PlaceType.famousPlaces:
+                    place.types.push(PlaceType.famousPlaces)
+                    break;
+
+                case PlaceType.MuseumArtGallery:
+                    place.types.push(PlaceType.MuseumArtGallery)
+                    break;
+
+                case PlaceType.craft:
+                    place.types.push(PlaceType.craft)
+                    break;
+
+                case PlaceType.TraditionalCraft:
+                    place.types.push(PlaceType.TraditionalCraft)
+                    break;
+
+                case PlaceType.factory:
+                    place.types.push(PlaceType.factory)
+                    break;
+
+                case PlaceType.zoo:
+                    place.types.push(PlaceType.zoo)
+                    break;
+
+                case PlaceType.aquarium:
+                    place.types.push(PlaceType.aquarium)
+                    break;
+
                 default:
                     break;
             }
@@ -399,39 +464,84 @@ class GPlacesRepo {
         }
     }
 
+    private _convertGtypesToTypes(response: PlacesResponse, isMust: boolean = false): PlacesResponse {
+        response.places.forEach(place => {
+            const types = place.types;
+
+            if (isMust) {
+                types.push(PlaceType.must);
+            }
+
+            if (types.includes('amusement_park') || types.includes('amusement_center')) {
+                types.push(PlaceType.amusementPark)
+                return
+            } 
+
+            if (types.includes('hiking_area')) {
+                types.push(PlaceType.hiking);
+                return
+            }
+
+            if (types.includes('historical_landmark')) {
+                types.push(PlaceType.famousPlaces);
+                return
+            }
+
+            if (types.includes('art_gallery') || types.includes('museum')) {
+                types.push(PlaceType.MuseumArtGallery);
+                return
+            }
+
+            if (types.includes('zoo')) {
+                types.push(PlaceType.zoo);
+                return
+            }
+
+            if (types.includes('aquarium')) {
+                types.push(PlaceType.aquarium);
+                return
+            }
+
+            // Typesで絞れないものは、PlaceType.famousPlacesに統一
+            types.push(PlaceType.famousPlaces);
+        })
+
+        return response
+    }
+
     private _convertSearchKeyword(value: string): string {
         switch (value) {
             case PlaceType.NaturalScenery:
-                return "自然景観巡り"
+                return "おすすめ 自然景観巡り"
             
             case PlaceType.marineSports:
-                return "マリンスポーツ"
+                return "おすすめ マリンスポーツ"
         
             case PlaceType.snowSports:
-                return "スノースポーツ"
+                return "おすすめ スノースポーツ"
             
             case PlaceType.craft:
-                return "クラフト体験"
+                return "おすすめ クラフト体験"
 
             case PlaceType.TraditionalCraft:
-                return "伝統工芸体験"
+                return "おすすめ 伝統工芸体験"
             
             case PlaceType.factory:
-                return "工場見学"
+                return "おすすめ 工場見学"
             default:
                 return "有名な観光スポット"
         }
     }
 
     private _decideSearchMethod(args: IDecideSearchMethodArgs): IDecideSearchMethodResponse {
-        const { value, spot } = args;
+        const { value, spot, days } = args;
 
         const types = this._convertGtypes(value);
 
         if (types.includes("SEARCH_KEYWORD")) {
             const keyword = this._convertSearchKeyword(value);
 
-            const reqBody = this._createRecommendSpotReqBody({ keyword, spot })
+            const reqBody = this._createRecommendSpotReqBody({ keyword, spot, days })
 
             return {
                 method: "SEARCH_TEXT",
@@ -440,7 +550,7 @@ class GPlacesRepo {
         }
 
         // COMMENT: Nearby Search
-        const reqBody = this._createNeabySearchReqBody({ types, spot });
+        const reqBody = this._createNeabySearchReqBody({ types, spot, days });
 
         return {
             method: "NEARBY",
@@ -473,7 +583,7 @@ class GPlacesRepo {
     async searchPlacesWithKeyword(keyword: string): Promise<PlacesResponse> {
         const reqBody = this._searchPlaceWithKeyword(keyword);
         const response = await this._fetchTextSearch(reqBody.body, reqBody.headers);
-        const addTypeSpot = this._addType(response, "recommend", true);
+        const addTypeSpot = this._convertGtypesToTypes(response, true);
         return addTypeSpot
     }
 
@@ -498,14 +608,14 @@ class GPlacesRepo {
         return response
     }
 
-    async fetchAllRecommendSpots(keywords: string[], argSpot: v2ReqSpot): Promise<IFetchAllRecommendSpot[]> {
+    async fetchAllRecommendSpots(keywords: string[], argSpot: v2ReqSpot, days: number): Promise<IFetchAllRecommendSpot[]> {
 
         const result: IFetchAllRecommendSpot[] = [];
         
         for (let i = 0; i < keywords.length; i++) {
-            const methodReqBody = this._decideSearchMethod({ value: keywords[i], spot: argSpot })
+            const methodReqBody = this._decideSearchMethod({ value: keywords[i], spot: argSpot, days })
             const spot = await this._fetchRecommendSpot(methodReqBody);
-            const addTypeSpot = this._addType(spot, "recommend")
+            const addTypeSpot = this._addType(spot, keywords[i]);
             const theme = convertJapanese(keywords[i]);
             result.push({ keyword: theme, places: addTypeSpot.places })
         }
@@ -516,20 +626,40 @@ class GPlacesRepo {
     async fetchHotelSpots(keyword: string, argSpot: v2ReqSpot): Promise<PlacesResponse> {
         const reqBody = this._createHotelReqBody({ keyword, spot: argSpot });
         const response = await this._fetchTextSearch(reqBody);
-        const addTypeSpot = this._addType(response, "hotel");
+        const addTypeSpot = this._addType(response, PlaceType.hotel);
         return addTypeSpot
     }
 
     async fetchEatingSpots(params: ICreateEatingReqBody) : Promise<PlacesResponse>{
         const reqBody = this._createEatingReqBody(params);
         const response = await this._fetchTextSearch(reqBody);
-        const addTypeSpot = this._addType(response, "eating");
+        const addTypeSpot = this._addType(response, PlaceType.eating);
         return addTypeSpot
     }
 
     async fetchPhtoSingleUri(params: IFetchPlacePhotoRequestArgs) : Promise<PlacePhotoUriResponse> {
         const response = await this._fetchPlacePhoto(params);
         return response
+    }
+
+    async fetchAddRecommendSpots({theme, nextPage, spot, days}: IFetchAddRecommendSpots): Promise<IFetchAllRecommendSpot> {
+        // nextPageがある場合はそのまま検索
+
+        if (nextPage) {
+            const keyword = 'おすすめ ' + theme;
+            const reqBody = this._createRecommendSpotReqBody({ keyword, spot, days, pageToken: nextPage});
+            const response = await this._fetchTextSearch(reqBody);
+            const addTypeSpot = this._addType(response, theme);
+            return { keyword: theme, places: addTypeSpot.places }
+        }
+
+        // nextPageが無い場合、nearbySearchからテキスト検索へ移行
+        // 検索キーワード: 「おすすめ theme（テーマパーク）」
+        const searchKeyword = 'おすすめ ' + theme;
+
+        const reqBody = this._createRecommendSpotReqBody({ keyword: searchKeyword, spot, days });
+        const response = await this._fetchTextSearch(reqBody);
+        return { keyword: theme, places: response.places }
     }
 }
 

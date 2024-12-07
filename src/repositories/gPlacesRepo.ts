@@ -184,7 +184,7 @@ class GPlacesRepo {
         // TODO: ヘッダーを生成する関数に切り出す
         const requestHeader = header ?? new Headers({
             'Content-Type': 'application/json',
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating,places.photos,nextPageToken',
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.userRatingCount,places.rating,places.photos',
             'X-Goog-Api-Key': this._GOOGLE_API_KEY
         })
 
@@ -288,7 +288,7 @@ class GPlacesRepo {
 
         // locationRestriction計算
         const calcRectangle = new CalcSpotPoint().calcReqtanglePoint(args.spot)
-        const count = args.days * 10;
+        const count = args.days * 10 <= 20 ? args.days * 20 : 20;
 
         return {
             textQuery: args.keyword,
@@ -303,7 +303,7 @@ class GPlacesRepo {
 
     private _createNeabySearchReqBody(args: INearbySearchReqBody): IFetchNearbySearchBodyArgs {
         const calcRectangle = new CalcSpotPoint().calcReqtanglePoint(args.spot);
-        const count = args.days * 10
+        const count = args.days * 10 <= 20 ? args.days * 20 : 20;
 
         return {
             includedTypes: args.types,
@@ -561,6 +561,8 @@ class GPlacesRepo {
     private async _fetchRecommendSpot(args: IDecideSearchMethodResponse) {
         const { method, requestBody } = args;
 
+        console.log(requestBody)
+
         try {
             if (method === "NEARBY") {
                 const response: PlacesResponse = await this._fetchNearbySearch(requestBody);
@@ -615,6 +617,10 @@ class GPlacesRepo {
         for (let i = 0; i < keywords.length; i++) {
             const methodReqBody = this._decideSearchMethod({ value: keywords[i], spot: argSpot, days })
             const spot = await this._fetchRecommendSpot(methodReqBody);
+
+            console.log('レスポンス')
+            console.dir(spot, {depth: null, colors: true})
+
             const addTypeSpot = this._addType(spot, keywords[i]);
             const theme = convertJapanese(keywords[i]);
             result.push({ keyword: theme, places: addTypeSpot.places })

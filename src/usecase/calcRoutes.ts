@@ -220,14 +220,14 @@ class CalcRoutes {
           currentNode: string;
           path: string[];
           totalTime: number;
-          visited: Set<string>;
+          visitCount: Map<string, number>; // 各ノードの訪問回数
           mustPassNodes: Set<string>;
       }[] = [
           {
               currentNode: startNode,
               path: [startNode],
               totalTime: 0,
-              visited: new Set([startNode]),
+              visitCount: new Map([[startNode, 1]]),
               mustPassNodes: new Set(constraints.mustPassNodes),
           },
       ];
@@ -241,13 +241,13 @@ class CalcRoutes {
   
       // スタックが空になるまで探索
       while (stack.length > 0) {
-          const { currentNode, path, totalTime, visited, mustPassNodes } = stack.pop()!;
+          const { currentNode, path, totalTime, visitCount, mustPassNodes } = stack.pop()!;
   
           // 制約を超えた場合はスキップ
           if (totalTime > constraints.maxTotalTime) continue;
   
           // 終点に到達した場合の処理
-          if (currentNode === endNode) {
+          if (currentNode === endNode && path.length > 1) {
               if (mustPassNodes.size === 0) { // 全必須ノードを通過しているか確認
                   bestResults.push(new PathResult([...path], totalTime));
               }
@@ -264,19 +264,28 @@ class CalcRoutes {
           for (const edge of graph[currentNode]) {
               const nextNode = edge.to;
   
-              // 再訪問防止
-              if (visited.has(nextNode)) continue;
+              const nextVisitCount = visitCount.get(nextNode) || 0;
+
+              // 再訪問制限
+              if (nextNode === startNode) {
+                  if (nextVisitCount >= 2) continue; // 始点の再訪問は2回まで許可
+              } else if (nextVisitCount > 0) {
+                  continue; // 他のノードは1回だけ訪問可能
+              }
   
               // 時間制約のチェック
               const nextArrivalTime = totalTime + edge.travelTime;
               if (!isValidTimeConstraint(nextNode, nextArrivalTime, nextArrivalTime + edge.stayTime)) continue;
+
+              const updatedVisitCount = new Map(visitCount);
+              updatedVisitCount.set(nextNode, nextVisitCount + 1);
   
               // 新しい状態をスタックにプッシュ
               stack.push({
                   currentNode: nextNode,
                   path: [...path, nextNode],
                   totalTime: nextArrivalTime + edge.stayTime,
-                  visited: new Set([...visited, nextNode]),
+                  visitCount: updatedVisitCount,
                   mustPassNodes: updatedMustPassNodes,
               });
           }

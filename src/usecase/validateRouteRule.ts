@@ -86,6 +86,10 @@ class ValidateRouteRule {
         return sorted
     }
 
+    private _calcSpotTotalTime(spots: SpotTotalTime[]): number {
+        return spots.map(spot => spot.totalTime).reduce((now, next) => now + next, 0);
+    }
+
     private _enableEatingSpot(index: number, eatingCount: number = 0): string[] | null {
 
         // COMMENT: 副作用のある操作
@@ -141,7 +145,6 @@ class ValidateRouteRule {
                 if (mustTotalTimes.length <= 0) break;
 
                 // COMMENT: 副作用の操作
-                console.log(mustTotalTimes)
                 this._leftMustNodes = this._leftMustNodes.filter(mustNode => mustNode.place_id !== mustTotalTimes[0].place_id)
                 continue;
             }
@@ -154,8 +157,6 @@ class ValidateRouteRule {
         const eatingSpots: string[] = [];
         while (activeTime > 0 || eatingCount >= 2) {
             if (activeTime >= this.EATING_TIME) {
-                console.log(eatingCount)
-                console.log(activeTime)
                 // COMMENT: 副作用の操作
                 const eatingSpot = this._leftEatingNodes.shift() as v2ReqSpot;
                 mustPassNodes.push(eatingSpot.place_id);
@@ -177,10 +178,8 @@ class ValidateRouteRule {
     private _getMustPassesNodesOnMutiple(): Set<string>[] {
         // 全体の活動時間 < MustSpotのトータルタイムなら例外スロー
         const totalActivaTimes = this.activeTimes.reduce((now, next) => now + next);
-        const neededTimeMustSpot: SpotTotalTime[] = this._leftMustNodes.map(mustNode => {
+        let neededTimeMustSpot: SpotTotalTime[] = this._leftMustNodes.map(mustNode => {
             const stayTime = calcAverageStayTime(mustNode.types);
-
-            console.log(`${mustNode.spotName} の滞在時間は、${stayTime}`)
 
             const totalTime = stayTime + this.BASE_MOVE_TIME
 
@@ -190,7 +189,7 @@ class ValidateRouteRule {
             }
         })
 
-        const mustSpotsTotalTime = neededTimeMustSpot.map(spot => spot.totalTime).reduce((now, next) => now + next);
+        let mustSpotsTotalTime = this._calcSpotTotalTime(neededTimeMustSpot);
 
         if (totalActivaTimes < mustSpotsTotalTime) throw new Error("旅行日数が足りません");
         
@@ -263,29 +262,34 @@ class ValidateRouteRule {
            // 条件を満たしたらループを抜け出す
         // 一時保存したmustSpotNOdesを元にトータルタイムを計算し更新、
 
-        let copyNeededTimeMustSpot = [...neededTimeMustSpot];
-        let copyTotalMustTimes = mustSpotsTotalTime;
         const memoMustSpot: MemoMustSpot[] = []
 
         for (let index = 0; index < sortedActiveTimes.length; index++) {
 
             console.log("MustPassNodes: 条件3で生成")
+            const totalMustTime = this._calcSpotTotalTime(neededTimeMustSpot)
             // 既にMust Spotsを回り切っている場合は、EatingCountだけ2にして次のループへ
-            if (copyTotalMustTimes <= 0) {
+            if (totalMustTime <= 0) {
                 const eatingCount = (sortedActiveTimes[index].activeTime > this.EATING_TIME * 2) ? 2: (sortedActiveTimes[index].activeTime > this.EATING_TIME) ? 1: 0;
                 memoMustSpot.push({ mustSpots: null, index: sortedActiveTimes[index].index, eatingCount: eatingCount })
                 continue;
             }
 
             // MustSpotsがまだ存在し、EatingCount * 2で回れれる場合
-            if (copyTotalMustTimes + this.EATING_TIME * 2 < sortedActiveTimes[index].activeTime) {
-                memoMustSpot.push({ mustSpots: copyNeededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 2 })
+            if (totalMustTime + this.EATING_TIME * 2 < sortedActiveTimes[index].activeTime) {
+                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 2 })
+                
+                // 全てのMUST SPOTを探索するため
+                neededTimeMustSpot = [];
                 continue;
             } 
 
             // MustSpotsがまだ存在し、EatingCount * 1で回れれる場合
-            if (copyTotalMustTimes + this.EATING_TIME < sortedActiveTimes[index].activeTime) {
-                memoMustSpot.push({ mustSpots: copyNeededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 1 })
+            if (totalMustTime + this.EATING_TIME < sortedActiveTimes[index].activeTime) {
+                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 1 })
+
+                // 全てのMUST SPOTを探索するため
+                neededTimeMustSpot = [];
                 continue;
             }
 
@@ -293,28 +297,24 @@ class ValidateRouteRule {
             
             // その日でMust SPotsを全て回り切れない場合は、周れる限界まで周り残りは次の日に任せる
             while (true) {
-                if (copyTotalMustTimes + this.EATING_TIME >= sortedActiveTimes[index].activeTime) {
+                if (this._calcSpotTotalTime(neededTimeMustSpot) + this.EATING_TIME >= sortedActiveTimes[index].activeTime) {
                     // COMMENT: 副作用のある操作
-                    const left = copyNeededTimeMustSpot.pop();
+                    const left = neededTimeMustSpot.pop();
                     if (!left) break;
     
+                    // 次の日に回る
                     nextIterateMustNodes.push(left)
-    
-                    // COMMENT: 副作用のある操作
-                    copyTotalMustTimes = copyTotalMustTimes - left.totalTime;
                     continue;
                 }
                 
-                memoMustSpot.push({ mustSpots: copyNeededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 1})
+                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 1})
                 break;
             }
 
             // トータルタイムの更新、nextNodesの更新を行う
-            const totalTime = nextIterateMustNodes.map(node => node.totalTime).reduce((now, next) => now + next);
-            copyNeededTimeMustSpot = nextIterateMustNodes;
-            copyTotalMustTimes = totalTime;
+            neededTimeMustSpot = nextIterateMustNodes;
 
-            if (index === sortedActiveTimes.length - 1 && copyTotalMustTimes > 0) {
+            if (index === sortedActiveTimes.length - 1 && totalMustTime > 0) {
                 console.warn("Must Passes Nodesの生成に失敗しました")
                 throw new Error("指定された条件ではルート生成ができません");
             }
@@ -331,9 +331,6 @@ class ValidateRouteRule {
         })
 
         const sortmustPassNodesOnDays = [...mustPassNodesOnDays].sort((now, next) => now.index - next.index);
-
-        console.log("MustPassNodes: 条件3のソート結果")
-        console.dir(sortmustPassNodesOnDays, { depth: null, color:  true})
 
         const result: Set<string>[] = sortmustPassNodesOnDays.map(day => {
 
@@ -399,6 +396,11 @@ class ValidateRouteRule {
         // 上記をindexを元に昇順で並び替える
         const usedEatingSpots = [...this._usedEatingSpots].sort((now, next) => now.index - next.index);
 
+        if (usedEatingSpots.length <= 0) {
+            const none = { 'NONE': [[0, 0]] };
+            return Array(tripDateTimes.length).fill(none);
+        }
+        
         // 一つずつ取り出し、以下の処理を行う
         // 条件1 eatingSpotsの数が0であれば、nullを返す
         // 条件2 eatingSopotsの数が1であれば、keyをplace_id、calculateElapsedSeconds(activeTime, "17:00", "22:00")
@@ -434,6 +436,8 @@ class ValidateRouteRule {
 
             return {[none]: [[0, 0]]}
         })
+
+        console.log(timeConstraints)
 
         return timeConstraints
     }

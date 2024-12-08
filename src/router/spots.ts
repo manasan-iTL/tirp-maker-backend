@@ -283,8 +283,19 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         maxTotalTime: totalTimes[i],
       };
 
-      // console.log(routeWaypoints.filter(spot => spot.types.includes(PlaceType.eating)).map(spot => spot.place_id))
-      // console.dir(constraints, {depth: null, colors: true});
+      if (i == 0) {
+        // console.dir(newGraph, {depth: null, colors: true})
+      //   console.log(`${i}番目のループ`)
+      //   console.log(routeOrigin.place_id)
+      //   console.log(routeDestination.place_id)
+      //   console.log(routeWaypoints.map(spot => spot.place_id));
+        // console.log(routeWaypoints.filter(spot => spot.types.includes(PlaceType.eating)).map(spot => spot.place_id))
+  
+      //   console.log('Graph Keys')
+      //   const keys = Object.keys(newGraph)
+      //   console.log(keys)
+        // console.dir(constraints, {depth: null, colors: true});
+      }
 
       const shortestPathWithCondition = calcClient.v2DfsfindShortestRoute(
         newGraph,
@@ -292,6 +303,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         routeDestination.place_id,
         constraints
       );
+
+      console.log(shortestPathWithCondition);
 
       const searchRoutes = new SearchRoutes({
         origin: routeOrigin,
@@ -313,15 +326,12 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         const originalWaypoints = searchRoutes.getAllWaypointsId();
         const leftWaypoints = shortestPathWithCondition.filter((node) => {
           if (node === routeOrigin.place_id) {
-            // console.log('origin発見')
             return false;
           }
           if (node === routeDestination.place_id) {
-            // console.log('destimatiom発見')
             return false;
           }
           if (originalWaypoints.includes(node)) {
-            // console.log('waypoints発見')
             return false;
           }
 
@@ -335,9 +345,9 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // const test = eatingSpots.map(spot => spot.place_id);
 
         const addEatingSpots = eatingSpotIds.map((id) => {
-          const spot = eatingSpots.find((original) => original.place_id === id) as v2ReqSpot;
+          const spot = eatingSpots.find((original) => original.place_id === id);
           return spot;
-        });
+        }).filter(spot => spot !== undefined);
 
         deletedCount = deletedCount - addEatingSpots.length + 2;
 
@@ -394,7 +404,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
       plan: [...resultPlan]
     }
 
-    // console.dir(result, {depth: null, colors: true})
     return res.json(result)
 
     // Google Maxtrix APIへのリクエスト

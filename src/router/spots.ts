@@ -1,7 +1,7 @@
 import e from "express";
 import express, { NextFunction, Request, Response } from "express";
 import { Graph } from "redis";
-import { PlaceType } from "src/const/placeTypes";
+import { convertJapaneseToType, PlaceType } from "src/const/placeTypes";
 import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from "src/repositories/gPlacesRepo";
 import GRoutesMatrixRepo from "src/repositories/gRoutesMatrixRepo";
 import GRouteRepo from "src/repositories/gRoutesRepo";
@@ -200,6 +200,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
       throw new Error("Eating Spotsがありません");
     }
 
+    console.log(req.body.theme)
+
     const eatingPlaces = req.body.waypoints.filter(spot => spot.types.includes(PlaceType.eating));
     const eatingSpots = [...req.session.eatingSpots, ...eatingPlaces];
 
@@ -210,9 +212,12 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     });
 
     const { days } = calculateStayDuration(req.body.date.depatureDay, req.body.date.returnDay);
-    const mustPassNodes = validator.getMustPassesNodes(days);
+    const mustPassNodes = validator.getMustPassesNodes(days, convertJapaneseToType(req.body.theme));
     const timeConstraints = validator.getTimeConstraints(req.body.activeTimes);
     const totalTimes = validator.getTotalActiveTimes();
+
+    console.log(mustPassNodes)
+    console.dir(timeConstraints, {depth: null, colors: true})
 
     // throw new Error("一旦停止");
 
@@ -231,9 +236,14 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     // 追加するPathをoriginal_spotsに追加する（この際型に合うようコンバートする）
     // 次のループへ
 
+    const eatingKeys = Object.keys(timeConstraints[0]);
+    const Eatings = req.body.waypoints.filter(spot => spot.types.includes(PlaceType.eating));
+    const otherEatings = req.body.waypoints.filter(spot => !spot.types.includes(PlaceType.eating));
+    const matchEatings = Eatings.filter(spot => eatingKeys.includes(spot.place_id));
+
     let routeOrigin = req.body.originSpot;
     let routeDestination = req.body.destinationSpot;
-    let routeWaypoints = req.body.waypoints;
+    let routeWaypoints = [...otherEatings, ...matchEatings];
     let resultPlan: v2DayPlan[] = [];
     const gPlaceClient = new GPlacesRepo();
 
@@ -283,7 +293,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         maxTotalTime: totalTimes[i],
       };
 
-      if (i == 0) {
+      if (i == 1) {
         // console.dir(newGraph, {depth: null, colors: true})
       //   console.log(`${i}番目のループ`)
       //   console.log(routeOrigin.place_id)
@@ -292,9 +302,9 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // console.log(routeWaypoints.filter(spot => spot.types.includes(PlaceType.eating)).map(spot => spot.place_id))
   
       //   console.log('Graph Keys')
-      //   const keys = Object.keys(newGraph)
-      //   console.log(keys)
-        // console.dir(constraints, {depth: null, colors: true});
+        const keys = Object.keys(newGraph)
+        console.log(keys)
+        console.dir(constraints, {depth: null, colors: true});
       }
 
       const shortestPathWithCondition = calcClient.v2DfsfindShortestRoute(

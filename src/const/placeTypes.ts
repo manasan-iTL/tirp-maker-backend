@@ -66,4 +66,51 @@ export function convertJapanese(value: string): string {
     }
 }
 
+
+export function convertJapaneseToType(value: string): string {
+    switch (value) {
+        case "テーマパーク":
+            return PlaceType.themePark
+    
+        case "遊園地":
+            return PlaceType.amusementPark
+        
+        case "ハイキング":
+            return PlaceType.hiking
+        
+        case "自然景観巡り":
+            return PlaceType.NaturalScenery
+
+        case "マリンスポーツ":
+            return PlaceType.marineSports
+
+        case "スノースポーツ":
+            return PlaceType.snowSports
+        
+        case "名所めぐり":
+            return PlaceType.famousPlaces
+        
+        case "博物館・美術館":
+            return PlaceType.MuseumArtGallery
+        
+        case "クラフト":
+            return PlaceType.craft
+        
+        case "伝統工芸体験":
+            return PlaceType.TraditionalCraft
+        
+        case "工場見学":
+            return PlaceType.factory
+
+        case "動物園":
+            return PlaceType.zoo
+        
+        case "水族館":
+            return PlaceType.aquarium
+            
+        default:
+            return PlaceType.famousPlaces
+    }
+}
+
 export type TPlaceType = typeof PlaceType

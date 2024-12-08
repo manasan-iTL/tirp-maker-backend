@@ -18,6 +18,7 @@ interface ValidateRouteRuleInitial {
 
 interface SpotTotalTime {
     place_id: string,
+    types: string[],
     totalTime: number
 }
 
@@ -78,6 +79,7 @@ class ValidateRouteRule {
 
             return {
                 place_id: spot.place_id,
+                types: spot.types,
                 totalTime
             }
         })
@@ -123,7 +125,40 @@ class ValidateRouteRule {
             return dinner? [dinner.place_id] : null
         }
 
+        // 0個のときにthis._usedEatingSpotsに追加する
+        this._usedEatingSpots.push({ index, eatingSpots: [] })
+
         return null
+    }
+
+    // MustSpotがある日の場合
+    private _checkSkipEating(spots: SpotTotalTime[]): boolean {
+        const skipEatingSpots = spots.filter(spot => (
+            spot.types.includes(PlaceType.amusementPark) ||
+            spot.types.includes(PlaceType.themePark)||
+            spot.types.includes(PlaceType.hiking) ||
+            spot.types.includes(PlaceType.marineSports) ||
+            spot.types.includes(PlaceType.snowSports)
+        ))
+
+        return skipEatingSpots.length > 0
+    }
+
+    // MustSpotは無いが、テーマが条件に合致する場合
+    private _checkSkipEatingWithKeyword(eatingCount: number, theme: string): number {
+        if (
+            theme === PlaceType.amusementPark ||
+            theme === PlaceType.themePark ||
+            theme === PlaceType.hiking ||
+            theme === PlaceType.marineSports ||
+            theme === PlaceType.snowSports
+        ) {
+            eatingCount = eatingCount - 1;
+        }
+
+        if (eatingCount < 0) return 0
+
+        return eatingCount
     }
 
     private _getMustPassesNodeOnSingle(): Set<string> {
@@ -175,7 +210,7 @@ class ValidateRouteRule {
         return new Set(mustPassNodes);
     }
 
-    private _getMustPassesNodesOnMutiple(): Set<string>[] {
+    private _getMustPassesNodesOnMutiple(theme: string): Set<string>[] {
         // 全体の活動時間 < MustSpotのトータルタイムなら例外スロー
         const totalActivaTimes = this.activeTimes.reduce((now, next) => now + next);
         let neededTimeMustSpot: SpotTotalTime[] = this._leftMustNodes.map(mustNode => {
@@ -185,6 +220,7 @@ class ValidateRouteRule {
 
             return {
                 place_id: mustNode.place_id,
+                types: mustNode.types,
                 totalTime
             }
         })
@@ -196,59 +232,6 @@ class ValidateRouteRule {
 
         // 活動時間が長い日を抽出（起点）
         const sortedActiveTimes = [...this.activeTimes].map((time, index) => ({ index, activeTime: time })).sort((a,b) => (a.activeTime > b.activeTime ? -1: 1))
-        // const longerActiveTimeDay = sortedLongActiveTimes
-
-        // 条件1 MustSpotsのトータルタイムとEatingSpot*2 の合計がavtiveTimeを超えているか
-        // if (mustSpotsTotalTime + this.EATING_TIME * 2 < longerActiveTimeDay.activeTime) {
-            
-        //     console.log("MustPassNodes: 条件1で生成")
-        //     // １日ごとにMustSPot + 食事場所を順番に追加する
-        //     const mustPassNodesOnDays: Set<string>[] = this.activeTimes.map((time, index) => {
-        //         const mustPassNodes: string[] = [];
-        //         const eatingCount = (time > this.EATING_TIME * 2) ? 2: (time > this.EATING_TIME) ? 1: 0;
-        //         const eatingSpots = (index === longerActiveTimeDay.index) ? this._enableEatingSpot(index, 2): this._enableEatingSpot(index, eatingCount)
-
-        //         if (eatingSpots) {
-        //             mustPassNodes.push(...eatingSpots)
-        //         }
-
-        //         if (index === longerActiveTimeDay.index) {
-        //             const mustSpotPassNodes = this._leftMustNodes.map(node => node.place_id)
-        //             mustPassNodes.push(...mustSpotPassNodes)
-        //         }
-
-        //         const result = new Set(mustPassNodes)
-
-        //         return result
-        //     })
-
-        //     return mustPassNodesOnDays
-        // }
-
-        // 条件2 MustSpotsのトータルタイムとEatingSpot*1 の合計がavtiveTimeを超えているか
-        // if (mustSpotsTotalTime + this.EATING_TIME < longerActiveTimeDay.activeTime) {
-
-        //     console.log("MustPassNodes: 条件2で生成")
-        //     // １日ごとにMustSPot + 食事場所を順番に追加する
-        //     const mustPassNodesOnDays: Set<string>[] = this.activeTimes.map((time, index) => {
-        //         const mustPassNodes: string[] = [];
-        //         const eatingCount = (time > this.EATING_TIME * 2) ? 2: (time > this.EATING_TIME) ? 1: 0;
-
-        //         const eatingspots = (index === longerActiveTimeDay.index) ? this._enableEatingSpot(index, 1) : this._enableEatingSpot(index, eatingCount)
-        //         if (eatingspots) {
-        //             mustPassNodes.push(...eatingspots)
-        //         }
-
-        //         if (index === longerActiveTimeDay.index) {
-        //             const mustSpotPassNodes = this._leftMustNodes.map(node => node.place_id)
-        //             mustPassNodes.push(...mustSpotPassNodes)
-        //         }
-
-        //         return new Set(mustPassNodes)
-        //     })
-
-        //     return mustPassNodesOnDays
-        // }
 
         // 条件3 最も活動時間がある日からn個ずつMustSpotを減らしていく
         // 補足 ここで減らしたMustSpotsの時でループを抜ける
@@ -271,13 +254,15 @@ class ValidateRouteRule {
             // 既にMust Spotsを回り切っている場合は、EatingCountだけ2にして次のループへ
             if (totalMustTime <= 0) {
                 const eatingCount = (sortedActiveTimes[index].activeTime > this.EATING_TIME * 2) ? 2: (sortedActiveTimes[index].activeTime > this.EATING_TIME) ? 1: 0;
-                memoMustSpot.push({ mustSpots: null, index: sortedActiveTimes[index].index, eatingCount: eatingCount })
+                const enableCount = this._checkSkipEatingWithKeyword(eatingCount, theme);
+                memoMustSpot.push({ mustSpots: null, index: sortedActiveTimes[index].index, eatingCount: enableCount })
                 continue;
             }
 
             // MustSpotsがまだ存在し、EatingCount * 2で回れれる場合
             if (totalMustTime + this.EATING_TIME * 2 < sortedActiveTimes[index].activeTime) {
-                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 2 })
+                const isSkipEating = this._checkSkipEating(neededTimeMustSpot);
+                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: isSkipEating? 1: 2 })
                 
                 // 全てのMUST SPOTを探索するため
                 neededTimeMustSpot = [];
@@ -375,11 +360,11 @@ class ValidateRouteRule {
     /**
      * getMustPassesNodes
      */
-    public getMustPassesNodes(day: number): Set<string>[] {
+    public getMustPassesNodes(day: number, theme: string): Set<string>[] {
         
         if (day <= 1) return [this._getMustPassesNodeOnSingle()];
 
-        if (day > 1) return this._getMustPassesNodesOnMutiple();
+        if (day > 1) return this._getMustPassesNodesOnMutiple(theme);
 
         return [new Set()];
     }
@@ -409,7 +394,7 @@ class ValidateRouteRule {
         const timeConstraints: TimeConstraints[] = usedEatingSpots.map((spot, index) => {
             let none = 'NONE'
 
-            if (spot.eatingSpots.length < 0) return {[none]: [[0, 0]]}
+            if (spot.eatingSpots.length <= 0) return {[none]: [[0, 0]]}
 
             if (spot.eatingSpots.length === 1) {
                 const baseTime = tripDateTimes[index].depaturesAt
@@ -436,8 +421,6 @@ class ValidateRouteRule {
 
             return {[none]: [[0, 0]]}
         })
-
-        console.log(timeConstraints)
 
         return timeConstraints
     }

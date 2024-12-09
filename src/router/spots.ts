@@ -74,6 +74,7 @@ apiRouter.post(
         returnedDate: req.body.date.returnDay,
         gRouteRepo,
         gPlacesRepo,
+        req
       });
 
       // TODO: 旅行先の中心点を求める(現状はspotが中心 areaにも対応したい)
@@ -200,8 +201,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
       throw new Error("Eating Spotsがありません");
     }
 
-    console.log(req.body.theme)
-
     const eatingPlaces = req.body.waypoints.filter(spot => spot.types.includes(PlaceType.eating));
     const eatingSpots = [...req.session.eatingSpots, ...eatingPlaces];
 
@@ -212,12 +211,26 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     });
 
     const { days } = calculateStayDuration(req.body.date.depatureDay, req.body.date.returnDay);
-    const mustPassNodes = validator.getMustPassesNodes(days, convertJapaneseToType(req.body.theme));
+
+    // 出発地と目的地の移動時間を取得する
+    const response = await GRoutesMatrixRepo.fetchMoveTime(req.body.originSpot, req.body.destinationSpot)
+    const existRoutes = response.filter(route => route.duration !== '0s' && route.condition === "ROUTE_EXISTS")
+    const moveTimes = existRoutes.map(route => {
+      const numberStr = route.duration.slice(0, -1); // 末尾の1文字を削除
+      const durationSec = parseInt(numberStr, 10);
+      return durationSec
+    })
+
+    const mustPassNodes = validator.getMustPassesNodes(
+      days, 
+      convertJapaneseToType(req.body.theme), 
+      req.session.originMoveDestination ?? moveTimes[0] ?? 60 * 90
+    );
     const timeConstraints = validator.getTimeConstraints(req.body.activeTimes);
     const totalTimes = validator.getTotalActiveTimes();
 
-    console.log(mustPassNodes)
-    console.dir(timeConstraints, {depth: null, colors: true})
+    // console.log(mustPassNodes)
+    // console.dir(timeConstraints, {depth: null, colors: true})
 
     // throw new Error("一旦停止");
 
@@ -293,7 +306,11 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         maxTotalTime: totalTimes[i],
       };
 
-      if (i == 1) {
+      const keys = Object.keys(newGraph)
+      console.log(keys)
+      console.dir(constraints, {depth: null, colors: true});
+
+      if (i == 0) {
         // console.dir(newGraph, {depth: null, colors: true})
       //   console.log(`${i}番目のループ`)
       //   console.log(routeOrigin.place_id)
@@ -302,9 +319,9 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // console.log(routeWaypoints.filter(spot => spot.types.includes(PlaceType.eating)).map(spot => spot.place_id))
   
       //   console.log('Graph Keys')
-        const keys = Object.keys(newGraph)
-        console.log(keys)
-        console.dir(constraints, {depth: null, colors: true});
+        // const keys = Object.keys(newGraph)
+        // console.log(keys)
+        // console.dir(constraints, {depth: null, colors: true});
       }
 
       const shortestPathWithCondition = calcClient.v2DfsfindShortestRoute(

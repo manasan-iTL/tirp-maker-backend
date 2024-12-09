@@ -155,6 +155,56 @@ class GRoutesMatrixRepo {
     public getOriginalSpots() {
         return this.original_spots
     }
+
+    static async fetchMoveTime(origin: v2ReqSpot, destination: v2ReqSpot) {
+        const GOOGLE_API_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
+        const locations = [origin.location, destination.location]
+
+        const origins: origin[] = locations.map(location => {
+            return {
+                waypoint: {
+                    location: {
+                        latLng: location
+                    }
+                },
+            }
+        })
+
+        const destinations: destination[] = locations.map(location => {
+            return {
+                waypoint: {
+                    location: {
+                        latLng: location
+                    }
+                },
+            }
+        })
+
+        const reqBody = {
+            origins: origins,
+            destinations: destinations,
+            travelMode: "DRIVE",
+            routingPreference: "TRAFFIC_AWARE",
+            languageCode: "ja"
+        }
+
+        const requestHeader = new Headers({
+            'Content-Type': 'application/json',
+            // FieldMaskに指定できる値は公式リファレンスを参照
+            'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY
+        })
+
+        const rawResponse = await fetch(GOOGLE_API_URL, {
+            headers: requestHeader,
+            body: JSON.stringify(reqBody),
+            method: "POST"
+        })
+
+        const response: RouteMatrixResBody[]  = await rawResponse.json()
+
+        return response
+    }       
 }
 
 

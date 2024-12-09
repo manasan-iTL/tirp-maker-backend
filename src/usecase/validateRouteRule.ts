@@ -2,7 +2,7 @@ import { PlaceType } from "src/const/placeTypes";
 import { v2ReqSpot } from "src/types";
 import { calcAverageStayTime } from "src/utils/calcAverageStayTime";
 import { TimeConstraints } from "./calcRoutes";
-import { calculateElapsedSeconds } from "src/utils/dates";
+import { calculateElapsedSeconds, isExsistTimeRange, isTimeInRangeSeconds, isTimeOver, secondsToTimeString, timeStringToSeconds } from "src/utils/dates";
 
 
 export interface TripDateTime {
@@ -32,14 +32,34 @@ interface MustPassNodesOnDay extends MemoMustSpot {
     activeTime: number
 }
 
+interface EnableEating {
+    value: boolean,
+    startPeriod: string,
+    endPeriod: string
+}
+
+interface LunchAndDinner {
+    isLunch: EnableEating,
+    isDinner: EnableEating
+}
+
+interface EatingSpot {
+    id: string,
+    type: 'LUNCH' | 'DINNER',
+    startPeriod: string,
+    endPeriod: string
+}
+
 interface UsedEatingSpot {
     index: number,
-    eatingSpots: string[]
+    baseTime: string,
+    eatingSpots: EatingSpot[]
 }
 
 class ValidateRouteRule {
 
     private activeTimes: number[] = []
+    private tripDateTimes: TripDateTime[] = []
     private BASE_MOVE_TIME = 60 * 60;
     private EATING_TIME = 60 * 90 + this.BASE_MOVE_TIME; 
     private _usedEatingSpots: UsedEatingSpot[] = [];
@@ -70,6 +90,7 @@ class ValidateRouteRule {
         this._leftEatingNodes = [...eatingSpots, ...addEatingSpots];
 
         this.activeTimes = dateTimes;
+        this.tripDateTimes = tripDateTimes
     }
 
     private _sortMustSpotTotalTimes(): SpotTotalTime[] {
@@ -92,43 +113,120 @@ class ValidateRouteRule {
         return spots.map(spot => spot.totalTime).reduce((now, next) => now + next, 0);
     }
 
-    private _enableEatingSpot(index: number, eatingCount: number = 0): string[] | null {
+    private _enableEatingSpot(index: number, eatingCount: number = 0, moveTime: number): string[] | null {
 
-        // COMMENT: 副作用のある操作
-        if ( eatingCount === 2) {
-            const lunch = this._leftEatingNodes.shift()
-            const dinner = this._leftEatingNodes.shift()
-            const eatingSpots: string[] = []
+        const { isLunch, isDinner } = this._checkEatingCountOnMove(index, moveTime, moveTime);
+        const baseTime = this.tripDateTimes[index].depaturesAt;
+        const result: string[] = [];
+        const DINNER: 'DINNER' | 'LUNCH' = 'DINNER';
+        const LUNCH: 'DINNER' | 'LUNCH' = 'LUNCH';
 
-            if (lunch) {
-                eatingSpots.push(lunch.place_id);
-            }
-
-            if (dinner) {
-                eatingSpots.push(dinner.place_id);
-            }
-
-            if (eatingSpots.length > 0) {
-                this._usedEatingSpots.push({ index, eatingSpots });
-            }
-
-            return (lunch && dinner)? [lunch.place_id, dinner.place_id] : null
+        // 条件1: eatingCountが0の場合、何もしない
+        if (eatingCount === 0) {
+            console.log('条件1でEatingを生成する')
+            this._usedEatingSpots.push({ index, baseTime: this.tripDateTimes[index].depaturesAt, eatingSpots: [] })
+            return null 
         }
 
-        if ( eatingCount === 1) {
-            const dinner = this._leftEatingNodes.shift()
+        // 条件2: isLunch / isDinnerの両方が正の場合
+        if (isLunch.value && isDinner.value) {
+            if (eatingCount === 1) {
+                console.log('条件2-1でEatingを生成する')
+                const [addSpot] = this._leftEatingNodes.splice(0, 1);
+                const eatingSpot = {
+                    id: addSpot.place_id,
+                    type: DINNER,
+                    startPeriod: isDinner.startPeriod,
+                    endPeriod: isDinner.endPeriod
+                }
 
-            if (dinner) {
-                this._usedEatingSpots.push({ index, eatingSpots: [dinner.place_id] })
+                this._usedEatingSpots.push({
+                    index,
+                    baseTime,
+                    eatingSpots: [eatingSpot]
+                })
+                result.push(addSpot.place_id)
+                return result
             }
+            
+            if (eatingCount === 2) {
+                console.log('条件2-2でEatingを生成する')
+                const [first, second] = this._leftEatingNodes.splice(0, 2);
 
-            return dinner? [dinner.place_id] : null
+                const lunchSpot = {
+                    id: first.place_id,
+                    type: LUNCH,
+                    startPeriod: isLunch.startPeriod,
+                    endPeriod: isLunch.endPeriod
+                }
+
+                const dinnerSpot = {
+                    id: second.place_id,
+                    type: DINNER,
+                    startPeriod: isDinner.startPeriod,
+                    endPeriod: isDinner.endPeriod
+                }
+
+                this._usedEatingSpots.push({
+                    index,
+                    baseTime,
+                    eatingSpots: [lunchSpot, dinnerSpot]
+                })
+
+                result.push(first.place_id, second.place_id)
+                return result                
+            }
         }
 
-        // 0個のときにthis._usedEatingSpotsに追加する
-        this._usedEatingSpots.push({ index, eatingSpots: [] })
+        // 条件3 isLunch 正 isDinner 負の場合
+        if (isLunch.value && !isDinner.value) {
+            if (eatingCount === 1 || eatingCount === 2) {
+                console.log('条件3でEatingを生成する')
+                const [addSpot] = this._leftEatingNodes.splice(0, 1);
+                const eatingSpot = {
+                    id: addSpot.place_id,
+                    type: LUNCH,
+                    startPeriod: isLunch.startPeriod,
+                    endPeriod: isLunch.endPeriod
+                }
 
-        return null
+                this._usedEatingSpots.push({
+                    index,
+                    baseTime,
+                    eatingSpots: [eatingSpot]
+                })
+                result.push(addSpot.place_id)
+                return result
+            }
+        }
+
+        // 条件4 isLunch 負 isDinner 正の場合
+        if (!isLunch.value && isDinner.value) {
+            if (eatingCount === 1 || eatingCount === 2) {
+                console.log('条件4でEatingを生成する')
+                const [addSpot] = this._leftEatingNodes.splice(0, 1);
+                const eatingSpot = {
+                    id: addSpot.place_id,
+                    type: DINNER,
+                    startPeriod: isDinner.startPeriod,
+                    endPeriod: isDinner.endPeriod
+                }
+
+                this._usedEatingSpots.push({
+                    index,
+                    baseTime,
+                    eatingSpots: [eatingSpot]
+                })
+                result.push(addSpot.place_id)
+                return result
+            }
+        }
+
+        // 条件5 食事の時間が取れないため、何もしない
+        console.log('条件5でEatingを生成する')
+        this._usedEatingSpots.push({ index, baseTime: this.tripDateTimes[index].depaturesAt, eatingSpots: [] })
+
+        return result
     }
 
     // MustSpotがある日の場合
@@ -161,7 +259,86 @@ class ValidateRouteRule {
         return eatingCount
     }
 
-    private _getMustPassesNodeOnSingle(): Set<string> {
+    private _checkEatingCountOnMove(
+        index: number, 
+        depatureFromMoveTime: number,
+        destinationFromMoveTime: number,
+    ): LunchAndDinner {
+        const { depaturesAt, destinationsAt } = this.tripDateTimes[index];
+
+        let addDepatureMoveTime = undefined;
+        let addDestinationMoveTime = undefined;
+
+        // 日帰りの場合、出発時間と到着時間の両方に移動時間が必要
+        if (this.tripDateTimes.length === 1) {
+            addDepatureMoveTime = depatureFromMoveTime
+            addDestinationMoveTime = destinationFromMoveTime
+            console.log(`初日の出発に加算する値: ${addDepatureMoveTime} 到着に加算する値: ${addDestinationMoveTime}`)
+        }
+
+        // 複数日程 && 初日の場合
+        if (this.tripDateTimes.length > 1 && index === 0) {
+            addDepatureMoveTime = depatureFromMoveTime
+            console.log(`複数日・初日の出発に加算する値: ${addDepatureMoveTime} 到着に加算する値: ${addDestinationMoveTime}`)
+        }
+
+        // 複数日程 && 最終日の場合
+        if (this.tripDateTimes.length > 1 && index === this.tripDateTimes.length - 1) {
+            addDestinationMoveTime = destinationFromMoveTime
+            console.log(`複数日・最終日の出発に加算する値: ${addDepatureMoveTime} 到着に加算する値: ${addDestinationMoveTime}`)
+        }
+
+        const isEnableLunch = this._checkBookingDepatureEating(depaturesAt, addDepatureMoveTime)
+        const isEnableDinner = this._checkBookingDestinationEating(destinationsAt, addDestinationMoveTime)
+
+        console.log(isEnableLunch)
+        console.log(isEnableDinner)
+
+        return {
+            isLunch: isEnableLunch,
+            isDinner: isEnableDinner
+        }
+    }
+
+    // 出発時間（移動時間と滞在時間を含む）と昼食予定時間が重なっているかを判定する
+    private _checkBookingDepatureEating(depatureAt: string, moveTime?: number) {
+
+        // 移動時間
+        const moveTimeSecond = moveTime ?? this.BASE_MOVE_TIME;
+        const moveAndStay = moveTimeSecond + 60 * 90
+
+        const isEnable = isTimeOver(
+            depatureAt, 
+            "15:00",
+            moveTimeSecond,
+            60 * 90 
+        );
+
+        return { value: isEnable, startPeriod: "11:00", endPeriod: "15:00" }
+    }
+
+    private _checkBookingDestinationEating(destinationAt: string, moveTime?: number) {
+
+        // 最終日の場合は、到着地への移動時間
+        const moveTimeSecond = moveTime ?? this.BASE_MOVE_TIME;
+
+        // 夕食の会場をでなければいけない時間
+        const depatureFromEating = timeStringToSeconds(destinationAt) - moveTimeSecond;
+
+        const isEnable = isExsistTimeRange(
+            "17:00", 
+            depatureFromEating,
+            60 * 90
+        );
+
+        const timeToString = secondsToTimeString(depatureFromEating)
+        console.log('到着時間', destinationAt)
+        console.log(`変換前: ${depatureFromEating} 変換後: ${timeToString}`)
+
+        return { value: isEnable, startPeriod: "17:00", endPeriod: timeToString }
+    }
+
+    private _getMustPassesNodeOnSingle(moveTime: number): Set<string> {
 
         const mustPassNodes: string[] = [];
         let activeTime = this.activeTimes[0];
@@ -186,16 +363,23 @@ class ValidateRouteRule {
 
             break;
         }
+        
+        const { isDinner, isLunch } = this._checkEatingCountOnMove(0, moveTime, moveTime)
+
+        // 食事の時間があるかを確認する
+        if (!isDinner.value && !isLunch) {
+            return new Set(mustPassNodes);
+        }
 
         // TODO: 残った時間分、食事スポットが回れるのであれは。食事スポットのIDを
         let eatingCount = 0;
-        const eatingSpots: string[] = [];
-        while (activeTime > 0 || eatingCount >= 2) {
+        const DINNER: 'DINNER' | 'LUNCH' = 'DINNER';
+        const LUNCH: 'DINNER' | 'LUNCH' = 'LUNCH';
+        const baseTime = this.tripDateTimes[0].depaturesAt
+
+        while (activeTime > 0 && eatingCount < 3) {
             if (activeTime >= this.EATING_TIME) {
                 // COMMENT: 副作用の操作
-                const eatingSpot = this._leftEatingNodes.shift() as v2ReqSpot;
-                mustPassNodes.push(eatingSpot.place_id);
-                eatingSpots.push(eatingSpot.place_id);
                 activeTime = activeTime - this.EATING_TIME;
                 eatingCount++
                 continue;
@@ -204,13 +388,96 @@ class ValidateRouteRule {
             break;
         }
 
-        // 副作用のある操作
-        this._usedEatingSpots.push({ index: 0, eatingSpots });
+        if (eatingCount === 0) return new Set(mustPassNodes);
+
+        if (isDinner.value && isLunch.value) {
+            if (eatingCount === 1) {
+                const [addSpot] = this._leftEatingNodes.splice(0, 1);
+                const eatingSpot = {
+                    id: addSpot.place_id,
+                    type: DINNER,
+                    startPeriod: isDinner.startPeriod,
+                    endPeriod: isDinner.endPeriod
+                }
+
+                this._usedEatingSpots.push({
+                    index: 0,
+                    baseTime,
+                    eatingSpots: [eatingSpot]
+                })
+
+                mustPassNodes.push(addSpot.place_id)
+            }
+            
+            if (eatingCount === 2) {
+                const [first, second] = this._leftEatingNodes.splice(0, 2);
+
+                const lunchSpot = {
+                    id: first.place_id,
+                    type: LUNCH,
+                    startPeriod: isLunch.startPeriod,
+                    endPeriod: isLunch.endPeriod
+                }
+
+                const dinnerSpot = {
+                    id: second.place_id,
+                    type: DINNER,
+                    startPeriod: isDinner.startPeriod,
+                    endPeriod: isDinner.endPeriod
+                }
+
+                this._usedEatingSpots.push({
+                    index: 0,
+                    baseTime,
+                    eatingSpots: [lunchSpot, dinnerSpot]
+                })
+
+                mustPassNodes.push(first.place_id, second.place_id)                
+            }
+        }
+
+        if (isLunch.value && !isDinner.value) {
+            if (eatingCount === 1 || eatingCount === 2) {
+                const [addSpot] = this._leftEatingNodes.splice(0, 1);
+                const eatingSpot = {
+                    id: addSpot.place_id,
+                    type: LUNCH,
+                    startPeriod: isLunch.startPeriod,
+                    endPeriod: isLunch.endPeriod
+                }
+
+                this._usedEatingSpots.push({
+                    index: 0,
+                    baseTime,
+                    eatingSpots: [eatingSpot]
+                })
+                mustPassNodes.push(addSpot.place_id)
+            }
+        }
+
+        if (!isLunch.value && isDinner.value) {
+            if (eatingCount === 1 || eatingCount === 2) {
+                const [addSpot] = this._leftEatingNodes.splice(0, 1);
+                const eatingSpot = {
+                    id: addSpot.place_id,
+                    type: DINNER,
+                    startPeriod: isDinner.startPeriod,
+                    endPeriod: isDinner.endPeriod
+                }
+
+                this._usedEatingSpots.push({
+                    index: 0,
+                    baseTime,
+                    eatingSpots: [eatingSpot]
+                })
+                mustPassNodes.push(addSpot.place_id)
+            }
+        }
 
         return new Set(mustPassNodes);
     }
 
-    private _getMustPassesNodesOnMutiple(theme: string): Set<string>[] {
+    private _getMustPassesNodesOnMutiple(theme: string, moveTime: number): Set<string>[] {
         // 全体の活動時間 < MustSpotのトータルタイムなら例外スロー
         const totalActivaTimes = this.activeTimes.reduce((now, next) => now + next);
         let neededTimeMustSpot: SpotTotalTime[] = this._leftMustNodes.map(mustNode => {
@@ -326,7 +593,7 @@ class ValidateRouteRule {
                 mustPassNodes.push(...mustSpotId);
             }
 
-            const eatingSpots = this._enableEatingSpot(day.index, day.eatingCount);
+            const eatingSpots = this._enableEatingSpot(day.index, day.eatingCount, moveTime);
 
             if (eatingSpots) {
                 mustPassNodes.push(...eatingSpots);
@@ -360,11 +627,11 @@ class ValidateRouteRule {
     /**
      * getMustPassesNodes
      */
-    public getMustPassesNodes(day: number, theme: string): Set<string>[] {
+    public getMustPassesNodes(day: number, theme: string, moveTime: number): Set<string>[] {
         
-        if (day <= 1) return [this._getMustPassesNodeOnSingle()];
+        if (day <= 1) return [this._getMustPassesNodeOnSingle(moveTime)];
 
-        if (day > 1) return this._getMustPassesNodesOnMutiple(theme);
+        if (day > 1) return this._getMustPassesNodesOnMutiple(theme, moveTime);
 
         return [new Set()];
     }
@@ -381,45 +648,44 @@ class ValidateRouteRule {
         // 上記をindexを元に昇順で並び替える
         const usedEatingSpots = [...this._usedEatingSpots].sort((now, next) => now.index - next.index);
 
-        if (usedEatingSpots.length <= 0) {
+        if (usedEatingSpots.length === 0) {
             const none = { 'NONE': [[0, 0]] };
             return Array(tripDateTimes.length).fill(none);
         }
         
         // 一つずつ取り出し、以下の処理を行う
-        // 条件1 eatingSpotsの数が0であれば、nullを返す
+        // 条件1 eatingSpotsの数が0であれば、{['NONE': [[0,0]]]}を返す
         // 条件2 eatingSopotsの数が1であれば、keyをplace_id、calculateElapsedSeconds(activeTime, "17:00", "22:00")
         // 条件3 eatingSopotsの数が2であれば、keyをplace_id、calculateElapsedSeconds(activeTime, "11:00", "15:00") calculateElapsedSeconds(activeTime, "17:00", "22:00")
+
+        // 出発時間と昼食予定時間が重なっている場合
+        // 到着時間と夕食予定時間が重なっている場合
 
         const timeConstraints: TimeConstraints[] = usedEatingSpots.map((spot, index) => {
             let none = 'NONE'
 
             if (spot.eatingSpots.length <= 0) return {[none]: [[0, 0]]}
 
-            if (spot.eatingSpots.length === 1) {
-                const baseTime = tripDateTimes[index].depaturesAt
-                const { startElapsedSeconds, endElapsedSeconds } = calculateElapsedSeconds(baseTime, "17:00", tripDateTimes[index].destinationsAt )
-                const id = spot.eatingSpots[0]
+            const result: TimeConstraints = {};
 
-                return {
-                    [id]: [[startElapsedSeconds, endElapsedSeconds]]
-                }
+            const lunch = spot.eatingSpots.find(eating => eating.type === 'LUNCH');
+            const dinner = spot.eatingSpots.find(eating => eating.type === 'DINNER');
+
+            if (lunch) {
+                const { startElapsedSeconds, endElapsedSeconds } = calculateElapsedSeconds(spot.baseTime, lunch.startPeriod, lunch.endPeriod);
+                result[lunch.id] = [[startElapsedSeconds, endElapsedSeconds]]
             }
 
-            if (spot.eatingSpots.length === 2) {
-                const baseTime = tripDateTimes[index].depaturesAt
-                const { startElapsedSeconds: dinnerStartSeconds, endElapsedSeconds: dinnerEndSeconds } = calculateElapsedSeconds(baseTime, "17:00", tripDateTimes[index].destinationsAt )
-                const { startElapsedSeconds: lunchStartSeconds, endElapsedSeconds: lunchEndSeconds } = calculateElapsedSeconds(baseTime, "11:00", "15:00" )
-                const lunch_id = spot.eatingSpots[0]
-                const dinner_id = spot.eatingSpots[1]
-
-                return {
-                    ...{ [lunch_id]: [[lunchStartSeconds, lunchEndSeconds]] },
-                    ...{ [dinner_id]: [[dinnerStartSeconds, dinnerEndSeconds]]}
-                }
+            if (dinner) {
+                const { startElapsedSeconds, endElapsedSeconds } = calculateElapsedSeconds(spot.baseTime, dinner.startPeriod, dinner.endPeriod);
+                result[dinner.id] = [[startElapsedSeconds, endElapsedSeconds]]
             }
 
-            return {[none]: [[0, 0]]}
+            if (Object.keys(result).length === 0) {
+                result[none] = [[0, 0]]
+            }
+
+            return result
         })
 
         return timeConstraints

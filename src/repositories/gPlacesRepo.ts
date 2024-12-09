@@ -618,9 +618,6 @@ class GPlacesRepo {
             const methodReqBody = this._decideSearchMethod({ value: keywords[i], spot: argSpot, days })
             const spot = await this._fetchRecommendSpot(methodReqBody);
 
-            console.log('レスポンス')
-            console.dir(spot, {depth: null, colors: true})
-
             const addTypeSpot = this._addType(spot, keywords[i]);
             const theme = convertJapanese(keywords[i]);
             result.push({ keyword: theme, places: addTypeSpot.places })

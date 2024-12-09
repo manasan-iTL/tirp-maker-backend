@@ -1,6 +1,7 @@
+import { Request } from "express";
 import GPlacesRepo from "src/repositories/gPlacesRepo";
 import GRouteRepo from "src/repositories/gRoutesRepo";
-import { v2ReqSpot } from "src/types";
+import { v2ReqSpot, v2SearchSpots } from "src/types";
 import { calculateStayDuration } from "src/utils/dates";
 
 interface IsValidTripInfoArgs {
@@ -11,6 +12,8 @@ interface IsValidTripInfoArgs {
 
     gRouteRepo: GRouteRepo,
     gPlacesRepo: GPlacesRepo
+
+    req: Request<unknown, unknown, v2SearchSpots> 
 }
 
 export interface TripDateTime {
@@ -58,7 +61,16 @@ class ValidateTripRule {
      * 旅行日数に対して行動時間が旅行日数×4時間未満ならエラーを返す
 
      */
-    public async isValidTripInfo({ origin, destination, depatureDate, returnedDate, gRouteRepo, gPlacesRepo }: IsValidTripInfoArgs): Promise<v2ReqSpot> {
+    public async isValidTripInfo(
+        {
+            origin, 
+            destination, 
+            depatureDate, 
+            returnedDate, 
+            gRouteRepo, 
+            gPlacesRepo,
+            req
+        }: IsValidTripInfoArgs): Promise<v2ReqSpot> {
 
         // TODO: 出発地のLocationを取得する
         const depatureLocation = await gPlacesRepo.getDepatureLocation(origin);
@@ -75,6 +87,12 @@ class ValidateTripRule {
         
         // TODO: 移動時間のチェック
         const durationNum = parseInt(response.routes[0].duration.slice(0, -1), 10);
+
+        req.session.originMoveDestination = durationNum;
+
+        console.log('移動時間')
+        console.log(durationNum)
+        console.log(req.session.originMoveDestination)
 
         const activeTotalSeconds = this.activeTimes.reduce((prev, current) => prev + current)
 

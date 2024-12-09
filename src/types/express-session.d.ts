@@ -8,6 +8,7 @@ declare module 'express-session' {
       wantDo?: string[];
       wantedPlace: v2ReqSpot,
       recommends?: V2ReqSpotWithTheme[],
-      eatingSpots?: v2ReqSpot[]
+      eatingSpots?: v2ReqSpot[],
+      originMoveDestination: number
     }
 }

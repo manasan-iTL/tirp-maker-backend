@@ -127,6 +127,8 @@ apiRouter.post(
         };
       });
 
+      if (resultSpots.length < 1) throw new NotFoundThemeError('テーマの生成ができませんでした。条件を変えて検索してみてください。')
+
       res.json({
         combineSpots: resultSpots,
         origin: newOrigin,

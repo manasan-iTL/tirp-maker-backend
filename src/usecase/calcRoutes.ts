@@ -1,3 +1,4 @@
+import { PlaceType } from "src/const/placeTypes";
 import { Graph, NewGraph } from "./builtGraph";
 import PathResult from "./PathResult";
 import PriorityQueue from "./priorityQueue/newVersion";
@@ -173,21 +174,45 @@ class CalcRoutes {
       graph: NewGraph,
       startNode: string,
       endNode: string,
-      constraints: Constraints
+      constraints: Constraints,
+      theme: string,
+      isRecrusion: boolean
     ) : string[] {
-      const currentPath: string[] = [];
-      const currentTotalTime = 0;  // 初期の総行動時間は0からスタート
       const bestResults: PathResult[] = [];
-  
-      // 訪問ノードを追跡するセット
-      const visited: Set<string> = new Set();
 
       // 全ての経路を探索する
-      this._dfsWithConditionsIterative(graph, startNode, endNode, constraints, bestResults);
+      if (
+        theme === PlaceType.amusementPark ||
+        theme === PlaceType.themePark ||
+        theme === PlaceType.hiking ||
+        theme === PlaceType.marineSports ||
+        theme === PlaceType.snowSports
+      ) {
+        console.log('時間制約なし')
+        this._dfsWithConditionsIterative(graph, startNode, endNode, isRecrusion, constraints, bestResults)
+      } else {
+        console.log('時間制約あり')
+        this._dfsWithConditionsIterativeWithTimeConstraint(graph, startNode, endNode, isRecrusion, constraints, bestResults);
+      }
 
-    // 最短経路を見つける
-    let shortestRoute: PathResult | null = null;
-    for (const result of bestResults) {
+      // 1回目の探索でルートが見つからない場合、時間制約の条件で探索せず、mustNodesにも食事スポットを入れない
+      if (bestResults.length < 1) {
+        const keys = Object.keys(constraints.timeConstraints);
+        // TimeConstraints オブジェクトからキーを取得し、mustNodes に存在するものを削除
+        for (const key of keys) {
+            if (constraints.mustPassNodes.has(key)) {
+                constraints.mustPassNodes.delete(key);
+            }
+        }
+
+        console.log('2回目の探索')
+        console.dir(constraints, {depth: null, colors: true})
+        this._dfsWithConditionsIterative(graph, startNode, endNode, isRecrusion, constraints, bestResults)
+      }
+
+      // 最短経路を見つける
+      let shortestRoute: PathResult | null = null;
+      for (const result of bestResults) {
 
         // COMMENT: 最も短いルートを算出する
         // if (!shortestRoute || result.totalTime < shortestRoute.totalTime) {
@@ -212,6 +237,7 @@ class CalcRoutes {
       graph: NewGraph,
       startNode: string,
       endNode: string,
+      isRecrusion: boolean,
       constraints: Constraints,
       bestResults: PathResult[]
   ): void {
@@ -227,17 +253,10 @@ class CalcRoutes {
               currentNode: startNode,
               path: [startNode],
               totalTime: 0,
-              visitCount: new Map([[startNode, 1]]),
+              visitCount: isRecrusion ? new Map([[startNode, 1]]) : new Map([[startNode, 2]]),
               mustPassNodes: new Set(constraints.mustPassNodes),
           },
       ];
-  
-      // ヘルパー関数: 時間制約のチェック
-      const isValidTimeConstraint = (node: string, arrivalTime: number, depatureTime: number): boolean => {
-          const timeRanges = constraints.timeConstraints[node];
-          if (!timeRanges) return true;
-          return timeRanges.some(([startTime, endTime]) => arrivalTime >= startTime && depatureTime <= endTime);
-      };
   
       // スタックが空になるまで探索
       while (stack.length > 0) {
@@ -275,7 +294,7 @@ class CalcRoutes {
   
               // 時間制約のチェック
               const nextArrivalTime = totalTime + edge.travelTime;
-              if (!isValidTimeConstraint(nextNode, nextArrivalTime, nextArrivalTime + edge.stayTime)) continue;
+              // if (!isValidTimeConstraint(nextNode, nextArrivalTime, nextArrivalTime + edge.stayTime)) continue;
 
               const updatedVisitCount = new Map(visitCount);
               updatedVisitCount.set(nextNode, nextVisitCount + 1);
@@ -291,6 +310,96 @@ class CalcRoutes {
           }
       }
   }
+
+      /**
+     * dfsWithConditions
+     * 
+     * 条件を考慮したルートを全探索で捜索する
+     */
+      private _dfsWithConditionsIterativeWithTimeConstraint(
+        graph: NewGraph,
+        startNode: string,
+        endNode: string,
+        isRecrusion: boolean,
+        constraints: Constraints,
+        bestResults: PathResult[],
+    ): void {
+        // スタックに初期状態をプッシュ
+        const stack: {
+            currentNode: string;
+            path: string[];
+            totalTime: number;
+            visitCount: Map<string, number>; // 各ノードの訪問回数
+            mustPassNodes: Set<string>;
+        }[] = [
+            {
+                currentNode: startNode,
+                path: [startNode],
+                totalTime: 0,
+                visitCount: isRecrusion ? new Map([[startNode, 1]]) : new Map([[startNode, 2]]),
+                mustPassNodes: new Set(constraints.mustPassNodes),
+            },
+        ];
+    
+        // ヘルパー関数: 時間制約のチェック
+        const isValidTimeConstraint = (node: string, arrivalTime: number, depatureTime: number): boolean => {
+            const timeRanges = constraints.timeConstraints[node];
+            if (!timeRanges) return true;
+            return timeRanges.some(([startTime, endTime]) => arrivalTime >= startTime && depatureTime <= endTime);
+        };
+    
+        // スタックが空になるまで探索
+        while (stack.length > 0) {
+            const { currentNode, path, totalTime, visitCount, mustPassNodes } = stack.pop()!;
+    
+            // 制約を超えた場合はスキップ
+            if (totalTime > constraints.maxTotalTime) continue;
+    
+            // 終点に到達した場合の処理
+            if (currentNode === endNode && path.length > 1) {
+                if (mustPassNodes.size === 0) { // 全必須ノードを通過しているか確認
+                    bestResults.push(new PathResult([...path], totalTime));
+                }
+                continue;
+            }
+    
+            // 現在のノードが必須ノードの場合はセットから削除
+            const updatedMustPassNodes = new Set(mustPassNodes);
+            if (mustPassNodes.has(currentNode)) {
+                updatedMustPassNodes.delete(currentNode);
+            }
+    
+            // 次のノードへの移動
+            for (const edge of graph[currentNode]) {
+                const nextNode = edge.to;
+    
+                const nextVisitCount = visitCount.get(nextNode) || 0;
+  
+                // 再訪問制限
+                if (nextNode === startNode) {
+                    if (nextVisitCount >= 2) continue; // 始点の再訪問は2回まで許可
+                } else if (nextVisitCount > 0) {
+                    continue; // 他のノードは1回だけ訪問可能
+                }
+    
+                // 時間制約のチェック
+                const nextArrivalTime = totalTime + edge.travelTime;
+                if (!isValidTimeConstraint(nextNode, nextArrivalTime, nextArrivalTime + edge.stayTime)) continue;
+  
+                const updatedVisitCount = new Map(visitCount);
+                updatedVisitCount.set(nextNode, nextVisitCount + 1);
+    
+                // 新しい状態をスタックにプッシュ
+                stack.push({
+                    currentNode: nextNode,
+                    path: [...path, nextNode],
+                    totalTime: nextArrivalTime + edge.stayTime,
+                    visitCount: updatedVisitCount,
+                    mustPassNodes: updatedMustPassNodes,
+                });
+            }
+        }
+    }
 }
 
 export default CalcRoutes

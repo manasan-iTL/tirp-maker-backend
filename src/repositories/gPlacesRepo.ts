@@ -288,7 +288,7 @@ class GPlacesRepo {
 
         // locationRestriction計算
         const calcRectangle = new CalcSpotPoint().calcReqtanglePoint(args.spot)
-        const count = args.days * 10 <= 20 ? args.days * 20 : 20;
+        const count = args.days * 10 <= 20 ? args.days * 10 : 20;
 
         return {
             textQuery: args.keyword,
@@ -303,7 +303,7 @@ class GPlacesRepo {
 
     private _createNeabySearchReqBody(args: INearbySearchReqBody): IFetchNearbySearchBodyArgs {
         const calcRectangle = new CalcSpotPoint().calcReqtanglePoint(args.spot);
-        const count = args.days * 10 <= 20 ? args.days * 20 : 20;
+        const count = args.days * 10 <= 20 ? args.days * 10 : 20;
 
         return {
             includedTypes: args.types,

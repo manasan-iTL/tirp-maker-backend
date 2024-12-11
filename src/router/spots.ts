@@ -267,8 +267,13 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     for (let i = 0; i < days; i++) {
       // origin / destinationを生成する
 
+      // 日帰りの場合
+      if (days === 1) {
+        routeDestination = req.body.originSpot
+      }
+
       // 最終日は反転
-      if (i === days - 1) {
+      if (days > 1 && i === days - 1) {
         routeOrigin = req.body.destinationSpot;
         routeDestination = req.body.originSpot;
       }
@@ -328,11 +333,15 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         // console.dir(constraints, {depth: null, colors: true});
       }
 
+      const isRecrusion = (0 < i && days - 1 > i) || days === 1;
+
       const shortestPathWithCondition = calcClient.v2DfsfindShortestRoute(
         newGraph,
         routeOrigin.place_id,
         routeDestination.place_id,
-        constraints
+        constraints,
+        convertJapaneseToType(req.body.theme),
+        isRecrusion
       );
 
       console.log(shortestPathWithCondition);

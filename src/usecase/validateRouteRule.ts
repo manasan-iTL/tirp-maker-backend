@@ -540,7 +540,8 @@ class ValidateRouteRule {
 
             // MustSpotsがまだ存在し、EatingCount * 1で回れれる場合
             if (totalMustTime + this.EATING_TIME < sortedActiveTimes[index].activeTime) {
-                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 1 })
+                const isSkipEating = this._checkSkipEating(neededTimeMustSpot);
+                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: isSkipEating? 0: 1 })
 
                 // 全てのMUST SPOTを探索するため
                 neededTimeMustSpot = [];
@@ -561,7 +562,8 @@ class ValidateRouteRule {
                     continue;
                 }
                 
-                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: 1})
+                const isSkipEating = this._checkSkipEating(neededTimeMustSpot);
+                memoMustSpot.push({ mustSpots: neededTimeMustSpot, index: sortedActiveTimes[index].index, eatingCount: isSkipEating ? 0: 1})
                 break;
             }
 

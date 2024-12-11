@@ -440,8 +440,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     const result: v2PlanDetailResponse = {
       basicInfo: {
             transportion: "CAR",
-            startDay: "2024-07-16-08-00",
-            endDay: "2024-07-16-22-00",
+            startDay: req.body.date.depatureDay,
+            endDay: req.body.date.returnDay,
           },
       plan: [...resultPlan]
     }

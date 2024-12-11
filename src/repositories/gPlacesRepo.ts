@@ -514,10 +514,10 @@ class GPlacesRepo {
                 return "おすすめ 自然景観巡り"
             
             case PlaceType.marineSports:
-                return "おすすめ マリンスポーツ"
+                return "おすすめ 海水浴場"
         
             case PlaceType.snowSports:
-                return "おすすめ スノースポーツ"
+                return "おすすめ スキー場"
             
             case PlaceType.craft:
                 return "おすすめ クラフト体験"

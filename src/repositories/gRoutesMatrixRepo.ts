@@ -1,4 +1,5 @@
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
+import { ApiError } from "src/error/CustomError";
 import { v2ReqSpot, v2RoutesReq } from "src/types";
 
 interface genBodyRequestArgs {
@@ -82,7 +83,7 @@ class GRoutesMatrixRepo {
             return response
         } catch (error) {
             console.log("error", error)
-            return []
+            throw new ApiError('交通情報の取得に失敗し、プランが生成できませんでした。別の条件でお試しください')
         }        
     }
 
@@ -195,15 +196,19 @@ class GRoutesMatrixRepo {
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY
         })
 
-        const rawResponse = await fetch(GOOGLE_API_URL, {
-            headers: requestHeader,
-            body: JSON.stringify(reqBody),
-            method: "POST"
-        })
-
-        const response: RouteMatrixResBody[]  = await rawResponse.json()
-
-        return response
+        try {
+            const rawResponse = await fetch(GOOGLE_API_URL, {
+                headers: requestHeader,
+                body: JSON.stringify(reqBody),
+                method: "POST"
+            })
+    
+            const response: RouteMatrixResBody[]  = await rawResponse.json()
+    
+            return response
+        } catch (error) {
+            throw new ApiError('交通情報の取得に失敗し、プランが生成できませんでした。別の条件でお試しください')
+        }
     }       
 }
 

@@ -2,6 +2,7 @@ import e from "express";
 import express, { NextFunction, Request, Response } from "express";
 import { Graph } from "redis";
 import { convertJapaneseToType, PlaceType } from "src/const/placeTypes";
+import { NotFoundThemeError, ValidationError } from "src/error/CustomError";
 import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from "src/repositories/gPlacesRepo";
 import GRoutesMatrixRepo from "src/repositories/gRoutesMatrixRepo";
 import GRouteRepo from "src/repositories/gRoutesRepo";
@@ -133,8 +134,9 @@ apiRouter.post(
         date: req.body.date,
       });
     } catch (error) {
-      console.log("エラーが発生しました");
-      console.log(error);
+      if (error instanceof ValidationError) {
+        next(new NotFoundThemeError(error.message))
+      }
       next(error);
     }
   }
@@ -195,10 +197,10 @@ apiRouter.get(
 
 // TODO: Routesを生成するアルゴリズムを考える、設計する
 // TODO: Routesを生成する関数を実装する
-apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, res: Response<v2PlanDetailResponse | {error: string}>) => {
+apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, res: Response<v2PlanDetailResponse>, next: NextFunction) => {
   try {
     if (!req.session.eatingSpots) {
-      throw new Error("Eating Spotsがありません");
+      throw new ValidationError("プランの生成に失敗しました。");
     }
 
     const eatingPlaces = req.body.waypoints.filter(spot => spot.types.includes(PlaceType.eating));
@@ -409,7 +411,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
 
           if (!place) {
             console.log('追加するSpotがありません！')
-            throw new Error("配列操作時にエラー");
+            throw new ValidationError("プラン生成中にエラーが発生し、生成に失敗しました。");
           } 
 
           addRecommends.push(place);
@@ -531,8 +533,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     // })
   } catch (error) {
     console.log(error);
-    return res.json({
-      error: "error",
-    });
+    next(error)
   }
 });

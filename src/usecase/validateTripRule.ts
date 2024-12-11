@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { ApiError, ValidationError } from "src/error/CustomError";
 import GPlacesRepo from "src/repositories/gPlacesRepo";
 import GRouteRepo from "src/repositories/gRoutesRepo";
 import { v2ReqSpot, v2SearchSpots } from "src/types";
@@ -72,6 +73,8 @@ class ValidateTripRule {
             req
         }: IsValidTripInfoArgs): Promise<v2ReqSpot> {
 
+        try {
+
         // TODO: 出発地のLocationを取得する
         const depatureLocation = await gPlacesRepo.getDepatureLocation(origin);
 
@@ -79,7 +82,6 @@ class ValidateTripRule {
         const { nights, days } = calculateStayDuration(depatureDate, returnedDate);
         this._setDays(days);
 
-        if (days >= 3) return depatureLocation
 
         // TODO: Routes APIへのリクエスト
         const response = await gRouteRepo.getRouteDuration({ origin: depatureLocation, destination });
@@ -96,10 +98,23 @@ class ValidateTripRule {
 
         const activeTotalSeconds = this.activeTimes.reduce((prev, current) => prev + current)
 
-        if (activeTotalSeconds - durationNum * 2 < 60 * 60 * 4 * days)
-            throw new Error("移動時間が長く活動できません")
+        if (days <= 2) {
+            if (activeTotalSeconds - durationNum * 2 < 60 * 60 * 4)
+                throw new ValidationError("移動時間が長く活動できません")
+        } else {
+            if (activeTotalSeconds - durationNum * 2 < 60 * 60 * 3)
+                throw new ValidationError('移動時間が長く活動できません')
+        }
     
         return depatureLocation
+            
+        } catch (error) {
+            if (error instanceof ValidationError) {
+                throw error
+            }
+
+            throw new ApiError('Google Routes APIへのリクエストが失敗しました')
+        }
     }
 }
 

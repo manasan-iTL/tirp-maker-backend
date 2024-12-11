@@ -1,6 +1,7 @@
 import { Request, response } from "express";
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
-import { convertJapanese, PlaceType } from "src/const/placeTypes";
+import { convertJapanese, convertJapaneseToType, PlaceType } from "src/const/placeTypes";
+import { ApiError } from "src/error/CustomError";
 import { fetchSpotsTextSearch } from "src/lib/googlePlacesApi";
 import { PlacePhotoUriResponse, PlacesLocation, PlacesResponse, Spot, v2PlaceDetail, v2ReqSpot, v2RoutesReq } from "src/types";
 import CalcSpotPoint from "src/utils/calcSpotPoint";
@@ -149,7 +150,7 @@ class GPlacesRepo {
             return response
         } catch (error) {
             console.log(error)
-            return { places: [] };
+            throw new ApiError('観光スポットの取得に失敗しました。条件を変えて検索してみてください')
         }
     }
 
@@ -175,7 +176,7 @@ class GPlacesRepo {
             return response
         } catch (error) {
             console.log(error)
-            return { places: [] };
+            throw new ApiError('現在地の取得に失敗しました。現在地には少なくとも市区町村を含める必要があります。')
         }
     }
 
@@ -200,7 +201,7 @@ class GPlacesRepo {
             return response
         } catch (error) {
             console.log(error)
-            return { places: [] };
+            throw new ApiError('観光スポットの取得に失敗しました。条件を変えて検索してみてください')
         }
     }
 
@@ -223,6 +224,7 @@ class GPlacesRepo {
             return response
         } catch (error) {
             console.log(error)
+            throw new ApiError('観光スポットの取得に失敗しました。条件を変えて検索してみてください')
         }
     }
 
@@ -249,10 +251,7 @@ class GPlacesRepo {
 
         } catch (error) {
             console.log(error)
-            return {
-                name: "",
-                photoUri: ""
-            }
+            throw new ApiError('観光スポットの写真取得に失敗しました。条件を変えて検索してみてください')
         }
 
     }
@@ -561,8 +560,6 @@ class GPlacesRepo {
     private async _fetchRecommendSpot(args: IDecideSearchMethodResponse) {
         const { method, requestBody } = args;
 
-        console.log(requestBody)
-
         try {
             if (method === "NEARBY") {
                 const response: PlacesResponse = await this._fetchNearbySearch(requestBody);
@@ -575,10 +572,7 @@ class GPlacesRepo {
             return response
         } catch (error) {
             console.log(error,{ depth: null, colors: true })
-
-            return {
-                places: []
-            }
+            throw error
         }
     }
 
@@ -599,8 +593,6 @@ class GPlacesRepo {
             ...origin,
             location: response.places[0].location
         }
-
-        console.log(newOrigin)
         
         return newOrigin
     }

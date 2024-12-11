@@ -652,7 +652,8 @@ class GPlacesRepo {
             const keyword = 'おすすめ ' + theme;
             const reqBody = this._createRecommendSpotReqBody({ keyword, spot, days, pageToken: nextPage});
             const response = await this._fetchTextSearch(reqBody);
-            const addTypeSpot = this._addType(response, theme);
+            const type = convertJapaneseToType(theme);
+            const addTypeSpot = this._addType(response, type);
             return { keyword: theme, places: addTypeSpot.places }
         }
 

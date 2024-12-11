@@ -641,21 +641,24 @@ class GPlacesRepo {
         // nextPageがある場合はそのまま検索
 
         if (nextPage) {
-            const keyword = 'おすすめ ' + theme;
+            const type = convertJapaneseToType(theme);
+            const keyword = this._convertSearchKeyword(theme);
             const reqBody = this._createRecommendSpotReqBody({ keyword, spot, days, pageToken: nextPage});
             const response = await this._fetchTextSearch(reqBody);
-            const type = convertJapaneseToType(theme);
             const addTypeSpot = this._addType(response, type);
             return { keyword: theme, places: addTypeSpot.places }
         }
 
         // nextPageが無い場合、nearbySearchからテキスト検索へ移行
         // 検索キーワード: 「おすすめ theme（テーマパーク）」
-        const searchKeyword = 'おすすめ ' + theme;
+        const type = convertJapaneseToType(theme);
+        const keyword = this._convertSearchKeyword(theme);
 
-        const reqBody = this._createRecommendSpotReqBody({ keyword: searchKeyword, spot, days });
+        const reqBody = this._createRecommendSpotReqBody({ keyword: keyword, spot, days });
         const response = await this._fetchTextSearch(reqBody);
-        return { keyword: theme, places: response.places }
+        const addTypeSpot = this._addType(response, type);
+
+        return { keyword: theme, places: addTypeSpot.places }
     }
 }
 

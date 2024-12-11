@@ -2,7 +2,7 @@ import e from "express";
 import express, { NextFunction, Request, Response } from "express";
 import { Graph } from "redis";
 import { convertJapaneseToType, PlaceType } from "src/const/placeTypes";
-import { NotFoundThemeError, ValidationError } from "src/error/CustomError";
+import { NotFoundRoutesError, NotFoundThemeError, ValidationError } from "src/error/CustomError";
 import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from "src/repositories/gPlacesRepo";
 import GRoutesMatrixRepo from "src/repositories/gRoutesMatrixRepo";
 import GRouteRepo from "src/repositories/gRoutesRepo";
@@ -434,6 +434,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         routeWaypoints = newWaypoints;
       }
     }
+
+    if (resultPlan.length < 1) throw new NotFoundRoutesError('ルート生成に失敗しました')
 
     const result: v2PlanDetailResponse = {
       basicInfo: {

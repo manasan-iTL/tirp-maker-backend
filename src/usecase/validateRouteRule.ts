@@ -367,7 +367,7 @@ class ValidateRouteRule {
         const { isDinner, isLunch } = this._checkEatingCountOnMove(0, moveTime, moveTime)
 
         // 食事の時間があるかを確認する
-        if (!isDinner.value && !isLunch) {
+        if (!isDinner.value && !isLunch.value) {
             return new Set(mustPassNodes);
         }
 
@@ -377,7 +377,9 @@ class ValidateRouteRule {
         const LUNCH: 'DINNER' | 'LUNCH' = 'LUNCH';
         const baseTime = this.tripDateTimes[0].depaturesAt
 
-        while (activeTime > 0 && eatingCount < 3) {
+        while (activeTime > 0) {
+            if (eatingCount >= 2) break;
+
             if (activeTime >= this.EATING_TIME) {
                 // COMMENT: 副作用の操作
                 activeTime = activeTime - this.EATING_TIME;

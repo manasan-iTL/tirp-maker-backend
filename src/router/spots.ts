@@ -316,8 +316,8 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
       };
 
       const keys = Object.keys(newGraph)
+      console.log(`${i}番目の生成`)
       console.log(keys)
-      console.dir(constraints, {depth: null, colors: true});
 
       if (i == 0) {
         // console.dir(newGraph, {depth: null, colors: true})
@@ -343,8 +343,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         convertJapaneseToType(req.body.theme),
         isRecrusion
       );
-
-      console.log(shortestPathWithCondition);
 
       const searchRoutes = new SearchRoutes({
         origin: routeOrigin,
@@ -392,41 +390,39 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         deletedCount = deletedCount - addEatingSpots.length + 2;
 
         // recommendから取得
-        const addRecommendsSpot = req.session.recommends?.find((recommend) => recommend.theme === req.body.theme);
+        let addRecommendsSpot = req.session.recommends?.find((recommend) => recommend.theme === req.body.theme);
 
         if (!addRecommendsSpot) {
           console.log('レコメンド情報がセッションにありません')
-          throw new Error("レコメンド情報がセッションにありません");  
+          throw new ValidationError("レコメンド情報がセッションにありません");  
         }
 
-        // 足りない場合、追加する
+        const splitTheme = addRecommendsSpot.theme.split('/');
+
+        // 足りない場合、セッションへ追加する
         if (addRecommendsSpot.spots.length < deletedCount) {
             // TODO: 足りない場合追加する処理
             const mustSpots = searchRoutes.getMustSpots();
             const response = await gPlaceClient.fetchAddRecommendSpots({  
-              theme: addRecommendsSpot.theme,
-              nextPage: addRecommendsSpot.nextPage,
-              days,
-              spot: mustSpots[0],
-              request: req
+              theme: splitTheme,
+              nextPage: addRecommendsSpot.nextPage? addRecommendsSpot.nextPage: undefined,
+              days: splitTheme.length > 1 ? 1 : days,
+              spot: mustSpots[0]
             })
-            const addRecommends = searchRoutes.convertV2ReqSpots(response);
-            addRecommendsSpot.spots = [...addRecommendsSpot.spots, ...addRecommends.spots];
-            addRecommendsSpot.nextPage = addRecommends.nextPage;
+
+            const combineClient = new GenerateCombineSpot();
+            const savedSession = combineClient.saveSession(addRecommendsSpot, response, req);
+
+            // addRecommendsSpotをセッションから取り出したもので更新する
+            addRecommendsSpot = req.session.recommends?.find((recommend) => recommend.theme === req.body.theme)
+
+            if (!addRecommendsSpot) {
+              console.log('セッションに保存したレコメンド情報の取得に失敗しました。')
+              addRecommendsSpot = savedSession
+            }
         }
 
-        const addRecommends: v2ReqSpot[] = [];
-
-        for (let k = 0; k < deletedCount; k++) {
-          const place = addRecommendsSpot.spots.shift();
-
-          if (!place) {
-            console.log('追加するSpotがありません！')
-            throw new ValidationError("プラン生成中にエラーが発生し、生成に失敗しました。");
-          } 
-
-          addRecommends.push(place);
-        }
+        const addRecommends: v2ReqSpot[] = addRecommendsSpot?.spots.splice(0, deletedCount);
 
         const newWaypoints = [...addEatingSpots, ...addRecommends];
 
@@ -447,103 +443,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     }
 
     return res.json(result)
-
-    // Google Maxtrix APIへのリクエスト
-    // const gMatrixRepo = new GRoutesMatrixRepo(req.body);
-    // const convertLocation = gMatrixRepo.convertLocationObj(req.body);
-
-    // const apiReqBody = gMatrixRepo.genBodyRequest({ locations: convertLocation });
-
-    // console.log("リクエストボディ")
-    // .dir(apiReqBody, { depth: null, colors: true })
-
-    // const response = await gMatrixRepo.requestRouteMatrix(apiReqBody);
-
-    // // Graphを構築
-    // const buildGraph = new BuiltGraph();
-    // // const distances = buildGraph.getDistance({ spots: gMatrixRepo.getOriginalSpots(), routes: response })
-    // const newDistance = buildGraph.getNewDistance({ spots: gMatrixRepo.getOriginalSpots(), routes: response });
-    // // const graph = buildGraph.buildGraph(distances);
-    // const newGraph = buildGraph.buildNewGraph(newDistance);
-
-    // console.log("New Distance")
-    // console.dir(newDistance, { depth: null, colors: true })
-
-    // console.log("New Graph")
-    // console.dir(newGraph, { depth: null, colors: true })
-
-    // const searchRoutes = new SearchRoutes(req.body);
-    // const origin = searchRoutes.getOriginId();
-    // const destination = searchRoutes.getDestinationHotelId();
-    // const mustWaypoints = searchRoutes.getMustWaypoint();
-    // const mustSpots = new Set(mustWaypoints);
-    // const timeConstrain = searchRoutes.createTimeConstraints();
-
-    // const constraints: Constraints = {
-    //   maxTotalTime: 60 * 60 * 12,
-    //   mustPassNodes: mustSpots,
-    //   timeConstraints: timeConstrain,
-    // };
-
-    // // TODO: 特定の時間帯にいなければならないスポットを動的に計算して取得する
-    // // COMMNET: 一旦固定値
-
-    // // COMENT: ルート計算用レポの呼び出し
-    // const calcClient = new CalcRoutes();
-    // const shortestPathWithCondition = calcClient.v2DfsfindShortestRoute(newGraph, origin, destination, constraints);
-
-    // // console.log("条件付きパス")
-    // // console.log(shortestPathWithCondition)
-
-    // const resultSpots = searchRoutes.convertPathToSpots({ path: shortestPathWithCondition });
-    // // console.log("スポット情報が入ったパス")
-    // // console.log(resultSpots)
-
-    // // const resultPlan = searchRoutes.v2NewGraphConvertPlan({ spots: resultSpots, graph: newGraph });
-    // // console.log("最終的なプラン")
-    // // console.dir(resultPlan, { depth: null, colors: true })
-
-    // const responseFe: v2PlanDetailResponse = {
-    //   basicInfo: {
-    //     transportion: "CAR",
-    //     startDay: "2024-07-16-08-00",
-    //     endDay: "2024-07-16-22-00",
-    //   },
-    //   plan: resultPlan,
-    // };
-
-    // // console.dir(responseFe)
-
-    // return res.json(responseFe);
-
-    // COMMENT: 最短経路を導出する（とりあえず1回・条件を考えない）
-
-    // COMMENT: レスポンスボディから始点と終点を取り出す（一旦出発地とホテルを取り出す）
-    // const waypoints = searchRoutes.getAllWaypointsId();
-
-    // COMMENT: 一旦すべてのスポット通る最短経路を導出する
-
-    // const shortestPath = calcClient.findShortestPathWithConstraints(graph, origin, destination, waypoints)
-
-    // console.log("最短経路")
-    // console.log(shortestPath)
-
-    // // TODO: 経路に対して、スポット情報を追加して返却する
-    // const resultSpots = searchRoutes.convertPathToSpots(shortestPath);
-
-    // console.log("最短経路")
-    // console.log(resultSpots)
-
-    // TODO: 滞在時間を一旦入れて、どの時間にどこにいるかをまとめたルート情報を返す
-    // const resultPlan = searchRoutes.convertV2Plan({ spots: resultSpots, graph })
-
-    // console.log("RESULT PLAN")
-    // console.dir(resultPlan, { depth: null, colors: true })
-
-    // return res.json({
-    //     status: "ok",
-    //     result: resultPlan
-    // })
+    
   } catch (error) {
     console.log(error);
     next(error)

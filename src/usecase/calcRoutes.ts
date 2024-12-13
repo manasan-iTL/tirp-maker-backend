@@ -103,17 +103,10 @@ class CalcRoutes {
 
         while (!pq.isEmpty()) {
 
-            // console.log("current Heap")
-            // console.dir(pq.showHeap())
-
             const current = pq.dequeue()!;
             const { node, totalTime, passedSpots, path } = current;
 
-            console.count("While Loop")
-            console.log(`Node=${node}, TotalTime=${totalTime}, PassedSpots=${Array.from(passedSpots).join(',')}, Path=${path.join('->')}`);
-
             if (node === end && mustPassSpots.every(spot => passedSpots.has(spot))) {
-              console.log("生成終了")
               return path;
             }
         
@@ -121,7 +114,6 @@ class CalcRoutes {
             if (visited.has(node)) {
               const existingSpots = visited.get(node)!;
               if (Array.from(existingSpots).every(spot => passedSpots.has(spot))) {
-                  console.log(`Skipping node: ${node} as it is already visited with a sufficient passedSpots`);
                   continue;
               }
             }
@@ -134,7 +126,6 @@ class CalcRoutes {
               const newPath = [...path, nextNode]; // 新しい経路
         
               if (newTotalTime > maxTotalTime) {
-                console.log("時間が超えたら次のNodeを探索")
                 continue;
               }
         
@@ -144,10 +135,6 @@ class CalcRoutes {
         
               const timeRanges = timeWithInSpots?.[nextNode] || [[0, Infinity]];
               const arrivalTime = totalTime + edge.travelTime;
-
-
-              // デバッグログ: 次のノードと到着時間
-              console.log(`Considering next node: ${nextNode}, arrivalTime: ${arrivalTime}`);
         
               if (!timeWithInSpots || this._isWithinTimeConstraints(arrivalTime, timeRanges)) {
                 pq.enqueue({ node: nextNode, totalTime: newTotalTime, passedSpots: newPassedSpots, path: newPath }, newTotalTime);
@@ -223,7 +210,7 @@ class CalcRoutes {
         if (!shortestRoute || result.path.length > shortestRoute.path.length) {
           shortestRoute = result;
         }
-    }
+      }
 
     return shortestRoute ? shortestRoute.path : [];
     }

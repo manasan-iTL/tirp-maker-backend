@@ -63,7 +63,6 @@ app.get('/api/spots', async (req: Request, res: Response) => {
 
     try {
         const result = await gPlacesRepo.searchPlacesWithKeyword(query);
-        console.log(result)
 
         const requestPromise: Promise<v2ReqSpot>[] = result.places.map(async place => {
             const photoId = place.photos[0]?.name.split("/").pop();
@@ -117,9 +116,6 @@ app.get('/api/spots', async (req: Request, res: Response) => {
         // res.json({status: "pre-success", query: query})
     }
 });
-
-
-// app.get('/api/spots2', async (req: Request, res: Response) => {
 //     const query = req.query ? String(req.query.keyword) : ""
 
 //     const Lating: LatLngLiteral = {

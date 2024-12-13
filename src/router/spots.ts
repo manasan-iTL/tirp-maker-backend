@@ -315,10 +315,6 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
         maxTotalTime: totalTimes[i],
       };
 
-      const keys = Object.keys(newGraph)
-      console.log(`${i}番目の生成`)
-      console.log(keys)
-
       if (i == 0) {
         // console.dir(newGraph, {depth: null, colors: true})
       //   console.log(`${i}番目のループ`)
@@ -443,7 +439,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
     }
 
     return res.json(result)
-    
+
   } catch (error) {
     console.log(error);
     next(error)

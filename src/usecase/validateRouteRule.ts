@@ -273,26 +273,20 @@ class ValidateRouteRule {
         if (this.tripDateTimes.length === 1) {
             addDepatureMoveTime = depatureFromMoveTime
             addDestinationMoveTime = destinationFromMoveTime
-            console.log(`初日の出発に加算する値: ${addDepatureMoveTime} 到着に加算する値: ${addDestinationMoveTime}`)
         }
 
         // 複数日程 && 初日の場合
         if (this.tripDateTimes.length > 1 && index === 0) {
             addDepatureMoveTime = depatureFromMoveTime
-            console.log(`複数日・初日の出発に加算する値: ${addDepatureMoveTime} 到着に加算する値: ${addDestinationMoveTime}`)
         }
 
         // 複数日程 && 最終日の場合
         if (this.tripDateTimes.length > 1 && index === this.tripDateTimes.length - 1) {
             addDestinationMoveTime = destinationFromMoveTime
-            console.log(`複数日・最終日の出発に加算する値: ${addDepatureMoveTime} 到着に加算する値: ${addDestinationMoveTime}`)
         }
 
         const isEnableLunch = this._checkBookingDepatureEating(depaturesAt, addDepatureMoveTime)
         const isEnableDinner = this._checkBookingDestinationEating(destinationsAt, addDestinationMoveTime)
-
-        console.log(isEnableLunch)
-        console.log(isEnableDinner)
 
         return {
             isLunch: isEnableLunch,
@@ -332,9 +326,6 @@ class ValidateRouteRule {
         );
 
         const timeToString = secondsToTimeString(depatureFromEating)
-        console.log('到着時間', destinationAt)
-        console.log(`変換前: ${depatureFromEating} 変換後: ${timeToString}`)
-
         return { value: isEnable, startPeriod: "17:00", endPeriod: timeToString }
     }
 

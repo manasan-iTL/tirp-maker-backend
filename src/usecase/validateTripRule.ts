@@ -92,10 +92,6 @@ class ValidateTripRule {
 
         req.session.originMoveDestination = durationNum;
 
-        console.log('移動時間')
-        console.log(durationNum)
-        console.log(req.session.originMoveDestination)
-
         const activeTotalSeconds = this.activeTimes.reduce((prev, current) => prev + current)
 
         if (days <= 2) {

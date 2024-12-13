@@ -125,7 +125,7 @@ class SearchRoutes {
             }
         })
 
-        return { theme: spots.keyword, spots: results, nextPage: spots.nextPageToken }
+        return { theme: spots.keyword, spots: results, nextPage: spots.nextPageToken? [spots.nextPageToken] : undefined }
     }
 
     /**

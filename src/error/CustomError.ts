@@ -29,3 +29,11 @@ export class NotFoundRoutesError extends Error {
         Object.setPrototypeOf(this, NotFoundRoutesError.prototype); // 必須: TypeScriptでエラーオブジェクトを正しく継承
     }
 }
+
+export class ApiRateLimit extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "ApiRateLimit"
+        Object.setPrototypeOf(this, ApiRateLimit.prototype); // 必須: TypeScriptでエラーオブジェクトを正しく継承
+    }
+}

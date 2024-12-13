@@ -12,7 +12,8 @@ import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from './repositories/gPlaces
 import redisClient from './lib/redis';
 import session from 'express-session';
 import RedisStore from 'connect-redis';
-import { ApiError, NotFoundRoutesError, NotFoundThemeError } from './error/CustomError';
+import { ApiError, ApiRateLimit, NotFoundRoutesError, NotFoundThemeError } from './error/CustomError';
+import { checkSessionCount } from './middleware/checkApiLimit';
 const app = express();
 const port = 8000;
 
@@ -49,6 +50,8 @@ app.use('/api/v2/spots', apiRouter)
 const client = new Client({});
 const MIN_SPOTS_PER_DAY = 3
 const GoogleApiKey = process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY : ""
+
+app.use(checkSessionCount)
 
 app.get('/api/spots', async (req: Request, res: Response) => {
 
@@ -579,6 +582,10 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
 
     if (error instanceof ApiError) {
         return res.status(500).json({ success: false, message: error.message })
+    }
+
+    if (error instanceof ApiRateLimit) {
+        return res.status(403).json({ success: false, message: error.message })
     }
 
     // 特定のエラータイプに応じてカスタム処理

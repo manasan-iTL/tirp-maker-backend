@@ -110,12 +110,18 @@ interface ICreateEatingReqBody {
     spot: v2ReqSpot
 }
 
-interface IFetchAddRecommendSpots {
+interface IFetchAddRecommendSpotsOnSingleTheme {
     theme: string,
     spot: v2ReqSpot,
     nextPage?: string,
     days: number,
-    request: Request<unknown, unknown, v2RoutesReq>
+}
+
+interface IFetchAddRecommendSpots {
+    theme: string[],
+    spot: v2ReqSpot,
+    nextPage?: (string | undefined)[],
+    days: number,
 }
 
 class GPlacesRepo {
@@ -359,10 +365,12 @@ class GPlacesRepo {
     }
 
     private _addType(spot: PlacesResponse, searchType: string, must: boolean = false): PlacesResponse {
+
+        if (spot.places.length === 0) return spot
+
         spot.places.forEach(place => {
 
             if (must) {
-                console.log("MUSTを追加")
                 place.types.push(PlaceType.must); 
             }
 
@@ -576,6 +584,35 @@ class GPlacesRepo {
         }
     }
 
+    private async _fetchAddRecommendSpotsOnSingleTheme({theme, nextPage, spot, days}: IFetchAddRecommendSpotsOnSingleTheme): Promise<IFetchAllRecommendSpot> {
+
+        try {
+            // nextPageがある場合はそのまま検索
+            if (nextPage) {
+                const type = convertJapaneseToType(theme);
+                const keyword = this._convertSearchKeyword(theme);
+                const reqBody = this._createRecommendSpotReqBody({ keyword, spot, days, pageToken: nextPage});
+                const response = await this._fetchTextSearch(reqBody);
+                const addTypeSpot = this._addType(response, type);
+                return { keyword: theme, places: addTypeSpot.places }
+            }
+    
+            // nextPageが無い場合、nearbySearchからテキスト検索へ移行
+            // 検索キーワード: 「おすすめ theme（テーマパーク）」
+            const type = convertJapaneseToType(theme);
+            const keyword = this._convertSearchKeyword(theme);
+    
+            const reqBody = this._createRecommendSpotReqBody({ keyword: keyword, spot, days });
+            const response = await this._fetchTextSearch(reqBody);
+            const addTypeSpot = this._addType(response, type);
+    
+            return { keyword: theme, places: addTypeSpot.places }   
+        } catch (error) {
+            console.log(error);
+            return { keyword: theme, places: [] }
+        } 
+    }
+
     async searchPlacesWithKeyword(keyword: string): Promise<PlacesResponse> {
         const reqBody = this._searchPlaceWithKeyword(keyword);
         const response = await this._fetchTextSearch(reqBody.body, reqBody.headers);
@@ -637,28 +674,21 @@ class GPlacesRepo {
         return response
     }
 
-    async fetchAddRecommendSpots({theme, nextPage, spot, days}: IFetchAddRecommendSpots): Promise<IFetchAllRecommendSpot> {
-        // nextPageがある場合はそのまま検索
-
-        if (nextPage) {
-            const type = convertJapaneseToType(theme);
-            const keyword = this._convertSearchKeyword(theme);
-            const reqBody = this._createRecommendSpotReqBody({ keyword, spot, days, pageToken: nextPage});
-            const response = await this._fetchTextSearch(reqBody);
-            const addTypeSpot = this._addType(response, type);
-            return { keyword: theme, places: addTypeSpot.places }
+    async fetchAddRecommendSpots({theme: keywords, nextPage, spot, days}: IFetchAddRecommendSpots): Promise<IFetchAllRecommendSpot[]> {
+        const result = [];
+        // 複数のテーマの場合
+        for (let i = 0; i < keywords.length; i++) {
+            const response = await this._fetchAddRecommendSpotsOnSingleTheme({
+                theme: keywords[i],
+                days,
+                spot,
+                nextPage: nextPage? nextPage[i]: undefined
+            })    
+            
+            result.push(response)
         }
 
-        // nextPageが無い場合、nearbySearchからテキスト検索へ移行
-        // 検索キーワード: 「おすすめ theme（テーマパーク）」
-        const type = convertJapaneseToType(theme);
-        const keyword = this._convertSearchKeyword(theme);
-
-        const reqBody = this._createRecommendSpotReqBody({ keyword: keyword, spot, days });
-        const response = await this._fetchTextSearch(reqBody);
-        const addTypeSpot = this._addType(response, type);
-
-        return { keyword: theme, places: addTypeSpot.places }
+        return result
     }
 }
 

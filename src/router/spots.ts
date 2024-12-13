@@ -129,6 +129,8 @@ apiRouter.post(
 
       if (resultSpots.length < 1) throw new NotFoundThemeError('テーマの生成ができませんでした。条件を変えて検索してみてください。')
 
+      req.session.rateCount = req.session.rateCount? req.session.rateCount + 1 : 1; 
+
       res.json({
         combineSpots: resultSpots,
         origin: newOrigin,
@@ -438,6 +440,7 @@ apiRouter.post("/routes", async (req: Request<unknown, unknown, v2RoutesReq>, re
       plan: [...resultPlan]
     }
 
+    req.session.rateCount = req.session.rateCount? req.session.rateCount + 1 : 1; 
     return res.json(result)
 
   } catch (error) {

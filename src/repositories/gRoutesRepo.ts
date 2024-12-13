@@ -1,5 +1,6 @@
 import { LoadFnOutput } from "module";
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
+import { ApiError } from "src/error/CustomError";
 import { v2ReqSpot, v2SearchSpots } from "src/types";
 
 interface Location {
@@ -57,7 +58,7 @@ class GRouteRepo {
             return response
         } catch (error) {
             console.log(error)
-            return null
+            throw new ApiError('交通情報の取得に失敗し、プランが生成できませんでした。別の条件でお試しください')
         }
     }
 

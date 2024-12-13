@@ -3,6 +3,8 @@ import { DayPlan, Plan, Route, SpotCard, TrafficCard, TrafficRoute, v2DayPlan, v
 import { Graph, NewGraph } from "./builtGraph";
 import { PlaceType } from "src/const/placeTypes";
 import { TimeConstraints } from "./calcRoutes";
+import { IFetchAllRecommendSpot } from "src/repositories/gPlacesRepo";
+import { V2ReqSpotWithTheme } from "src/utils/combineSpots";
 
 interface ConvertPlanArgs {
     spots: v2ReqSpot[] | undefined,
@@ -14,12 +16,18 @@ interface NewGraphConvertPlanArgs {
     graph: NewGraph
 }
 
+interface RouteReq {
+    origin: v2ReqSpot, 
+    waypoints: v2ReqSpot[], 
+    destination: v2ReqSpot
+}
+
 class SearchRoutes {
-    private _spots: v2RoutesReq;
+    private _spots: RouteReq;
     private _eatings: v2ReqSpot[];
     private _mustSpots: v2ReqSpot[];
 
-    constructor(args: v2RoutesReq) {
+    constructor(args: RouteReq) {
         this._spots = args;
         const eating = args.waypoints.filter(spot => spot.types.includes(PlaceType.eating))
         this._eatings = eating;
@@ -31,14 +39,14 @@ class SearchRoutes {
      * getOriginid
      */ 
     public getOriginId() {
-        return this._spots.originSpot.place_id
+        return this._spots.origin.place_id
     }
 
     /**
      * getDestinationHotelId
      */
     public getDestinationHotelId() {
-        return this._spots.destinationSpot.place_id
+        return this._spots.destination.place_id
     }
 
     /**
@@ -55,6 +63,13 @@ class SearchRoutes {
     public getMustWaypoint() {
         const ids = this._mustSpots.map(spot => spot.place_id);
         return ids;
+    }
+
+    /**
+     * getMustSpots
+     */
+    public getMustSpots() {
+        return this._mustSpots;
     }
 
     /**
@@ -86,16 +101,38 @@ class SearchRoutes {
     ): v2ReqSpot[] | undefined {
         if (!args) return undefined
 
-        const originalSpots = [this._spots.originSpot, ...this._spots.waypoints, this._spots.destinationSpot]
+        const originalSpots = [this._spots.origin, ...this._spots.waypoints, this._spots.destination]
         const spots = args.path.map(id => originalSpots.find(spot => spot.place_id === id)) as v2ReqSpot[];
         return spots
     }
 
     /**
+     * convertV2ReqSpots
+     */
+    public convertV2ReqSpots(spots: IFetchAllRecommendSpot): V2ReqSpotWithTheme {
+        const results: v2ReqSpot[] = spots.places.map(spot => {
+            return {
+                place_id: spot.id,
+                spotName: spot.displayName.text,
+                spotImgSrc: "",
+                spotImgAlt: "",
+                location: spot.location,
+                rating: spot.rating,
+                userRatingCount: spot.userRatingCount,
+                formattedAddress: spot.formattedAddress,
+                types: spot.types,
+                photoReference: spot.photos? spot.photos[0]: ''
+            }
+        })
+
+        return { theme: spots.keyword, spots: results, nextPage: spots.nextPageToken? [spots.nextPageToken] : undefined }
+    }
+
+    /**
      * convert
      */
-    public convertV2Plan(args: ConvertPlanArgs): v2Plan {
-        if (!args.spots) return []
+    public convertV2Plan(args: ConvertPlanArgs): v2DayPlan {
+        if (!args.spots) return { Routes : []}
 
         // COMMENT: 一旦実行時の時間で計算する
         const dayTime = new Date();
@@ -196,14 +233,14 @@ class SearchRoutes {
             Routes: routes
         }
 
-        return [dayRoute]
+        return dayRoute
     }
 
     /**
      * v2NewGraphConvertPlan
      */
-    public v2NewGraphConvertPlan({ spots, graph }: NewGraphConvertPlanArgs) :v2Plan {
-        if (!spots) return []
+    public v2NewGraphConvertPlan({ spots, graph }: NewGraphConvertPlanArgs) :v2DayPlan {
+        if (!spots) return { Routes: [] }
 
         // COMMENT: 一旦実行時の時間で計算する
         const dayTime = new Date();
@@ -267,10 +304,6 @@ class SearchRoutes {
             // COMMENT: 経由地を通るときの処理
             const arrive_at = this._formatDateString(dayTime)
             const { stayTime } = this._extrackWaypointTime(i, spots, graph);
-            if (spots[i].place_id === "ChIJVRJTL8dgGWARTKeBxFw82yE") {
-                console.log("ステイ時間")
-                console.log(stayTime)
-            }
             dayTime.setSeconds(dayTime.getSeconds() + stayTime);
             const depature_at = this._formatDateString(dayTime)
             
@@ -306,7 +339,7 @@ class SearchRoutes {
             Routes: routes
         }
 
-        return [dayRoute]
+        return dayRoute
     }
 
     private _formatDateString(date: Date) {

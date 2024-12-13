@@ -9,14 +9,11 @@ export const convertRoutes = (directionResponse: DirectionsResponse, dayDepartur
 
     // ルート間の経過時間を返す
     const routesDuration: number[] = legs.map((leg) => leg.duration.value * 1000)
-    
-    console.log(routesDuration)
 
     for (let i=0; i<legs.length; i++) {
             
         // 初回の処理
         if (i == 0) {
-            console.log("First Execute!!")
             // 出発時間の生成
             const departure_date = new Date(dayDepartureAt)
             departure_date.setHours(8)
@@ -39,7 +36,6 @@ export const convertRoutes = (directionResponse: DirectionsResponse, dayDepartur
     
             // 到着時間の生成
             const arrived_at = new Date(departure_date.getTime() + routesDuration[0])
-            console.log(arrived_at)
     
             // String型に整形
             const year = arrived_at.getFullYear();
@@ -65,7 +61,6 @@ export const convertRoutes = (directionResponse: DirectionsResponse, dayDepartur
     
         // 最後の処理
         if (i == legs.length - 1) {
-            console.log("Final Execute!!")
     
             // 該当スポットの取得
             const index = directionResponse.data.routes[0].waypoint_order[i - 1]
@@ -149,8 +144,6 @@ export const convertRoutes = (directionResponse: DirectionsResponse, dayDepartur
     
         // 先のスポットから現在地に到着する時間の取得
         const wayPoint = wayPointRoutes[i * 2 - 1]
-        console.log(`${i} Turn Execute!!`)
-    
         const arrived_at = wayPoint.category === "SPOT"? wayPoint.arrived_at : wayPoint.routes[0].arrive
     
         // タイプの変換
@@ -183,7 +176,6 @@ export const convertRoutes = (directionResponse: DirectionsResponse, dayDepartur
     
         // TrafficCardの追加
         const arrive_at_destination = new Date(new Date(departure_at).getTime() + routesDuration[i])
-        console.log(routesDuration[i])
     
         // String型に整形
         const arrive_at_destination_year = arrive_at_destination.getFullYear();

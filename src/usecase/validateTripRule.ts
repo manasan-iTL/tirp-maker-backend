@@ -1,6 +1,8 @@
+import { Request } from "express";
+import { ApiError, ValidationError } from "src/error/CustomError";
 import GPlacesRepo from "src/repositories/gPlacesRepo";
 import GRouteRepo from "src/repositories/gRoutesRepo";
-import { v2ReqSpot } from "src/types";
+import { v2ReqSpot, v2SearchSpots } from "src/types";
 import { calculateStayDuration } from "src/utils/dates";
 
 interface IsValidTripInfoArgs {
@@ -11,6 +13,8 @@ interface IsValidTripInfoArgs {
 
     gRouteRepo: GRouteRepo,
     gPlacesRepo: GPlacesRepo
+
+    req: Request<unknown, unknown, v2SearchSpots> 
 }
 
 export interface TripDateTime {
@@ -21,6 +25,7 @@ export interface TripDateTime {
 class ValidateTripRule {
 
     private activeTimes: number[] = []
+    private days: number = 0;
 
     constructor(args: { tripDateTimes: TripDateTime[] }) {
         const dateTimes = args.tripDateTimes.map(date => {
@@ -41,20 +46,42 @@ class ValidateTripRule {
         this.activeTimes = dateTimes;
     }
 
+    private _setDays(days: number) {
+        this.days = days
+    }
+
+    /**
+     * getDays
+     */
+    public getDays() {
+        return this.days;
+    }
+
     /**
      * isValidTripInfo
      * 旅行日数に対して行動時間が旅行日数×4時間未満ならエラーを返す
 
      */
-    public async isValidTripInfo({ origin, destination, depatureDate, returnedDate, gRouteRepo, gPlacesRepo }: IsValidTripInfoArgs): Promise<v2ReqSpot> {
+    public async isValidTripInfo(
+        {
+            origin, 
+            destination, 
+            depatureDate, 
+            returnedDate, 
+            gRouteRepo, 
+            gPlacesRepo,
+            req
+        }: IsValidTripInfoArgs): Promise<v2ReqSpot> {
+
+        try {
 
         // TODO: 出発地のLocationを取得する
         const depatureLocation = await gPlacesRepo.getDepatureLocation(origin);
 
         // TODO: 旅行日数の計算
         const { nights, days } = calculateStayDuration(depatureDate, returnedDate);
+        this._setDays(days);
 
-        if (days >= 3) return depatureLocation
 
         // TODO: Routes APIへのリクエスト
         const response = await gRouteRepo.getRouteDuration({ origin: depatureLocation, destination });
@@ -63,12 +90,27 @@ class ValidateTripRule {
         // TODO: 移動時間のチェック
         const durationNum = parseInt(response.routes[0].duration.slice(0, -1), 10);
 
+        req.session.originMoveDestination = durationNum;
+
         const activeTotalSeconds = this.activeTimes.reduce((prev, current) => prev + current)
 
-        if (activeTotalSeconds - durationNum * 2 < 60 * 60 * 4 * days)
-            throw new Error("移動時間が長く活動できません")
+        if (days <= 2) {
+            if (activeTotalSeconds - durationNum * 2 < 60 * 60 * 4)
+                throw new ValidationError("移動時間が長く活動できません")
+        } else {
+            if (activeTotalSeconds - durationNum * 2 < 60 * 60 * 3)
+                throw new ValidationError('移動時間が長く活動できません')
+        }
     
         return depatureLocation
+            
+        } catch (error) {
+            if (error instanceof ValidationError) {
+                throw error
+            }
+
+            throw new ApiError('Google Routes APIへのリクエストが失敗しました')
+        }
     }
 }
 

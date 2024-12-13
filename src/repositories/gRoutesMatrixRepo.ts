@@ -1,4 +1,5 @@
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
+import { ApiError } from "src/error/CustomError";
 import { v2ReqSpot, v2RoutesReq } from "src/types";
 
 interface genBodyRequestArgs {
@@ -42,15 +43,21 @@ export interface RouteMatrixResBody {
     destinationIndex: number
 }
 
+interface RouteReq {
+    origin: v2ReqSpot, 
+    waypoints: v2ReqSpot[], 
+    destination: v2ReqSpot
+}
+
 class GRoutesMatrixRepo {
 
     private GOOGLE_API_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
     private original_spots: v2ReqSpot[] = []
 
 
-    constructor(args: v2RoutesReq) {
-        const { originSpot, waypoints, destinationSpot } = args;
-        this.original_spots = [originSpot, ...waypoints, destinationSpot]
+    constructor(args: RouteReq) {
+        const { origin, waypoints, destination } = args;
+        this.original_spots = [origin, ...waypoints, destination]
     }
 
     /**
@@ -76,7 +83,7 @@ class GRoutesMatrixRepo {
             return response
         } catch (error) {
             console.log("error", error)
-            return []
+            throw new ApiError('交通情報の取得に失敗し、プランが生成できませんでした。別の条件でお試しください')
         }        
     }
 
@@ -110,12 +117,12 @@ class GRoutesMatrixRepo {
      * genReqBody
      * 
      */
-    public convertLocationObj(spots: v2RoutesReq) {
+    public convertLocationObj(spots: RouteReq) {
         const origin: Location = { 
             location: {
                 latLng: {
-                    latitude: spots.originSpot.location.latitude,
-                    longitude: spots.originSpot.location.longitude
+                    latitude: spots.origin.location.latitude,
+                    longitude: spots.origin.location.longitude
                 }
             }
         }
@@ -134,8 +141,8 @@ class GRoutesMatrixRepo {
         const destination: Location = { 
             location: {
                 latLng: {
-                    latitude: spots.destinationSpot.location.latitude,
-                    longitude: spots.destinationSpot.location.longitude
+                    latitude: spots.destination.location.latitude,
+                    longitude: spots.destination.location.longitude
                 }
             }
         }
@@ -149,6 +156,60 @@ class GRoutesMatrixRepo {
     public getOriginalSpots() {
         return this.original_spots
     }
+
+    static async fetchMoveTime(origin: v2ReqSpot, destination: v2ReqSpot) {
+        const GOOGLE_API_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
+        const locations = [origin.location, destination.location]
+
+        const origins: origin[] = locations.map(location => {
+            return {
+                waypoint: {
+                    location: {
+                        latLng: location
+                    }
+                },
+            }
+        })
+
+        const destinations: destination[] = locations.map(location => {
+            return {
+                waypoint: {
+                    location: {
+                        latLng: location
+                    }
+                },
+            }
+        })
+
+        const reqBody = {
+            origins: origins,
+            destinations: destinations,
+            travelMode: "DRIVE",
+            routingPreference: "TRAFFIC_AWARE",
+            languageCode: "ja"
+        }
+
+        const requestHeader = new Headers({
+            'Content-Type': 'application/json',
+            // FieldMaskに指定できる値は公式リファレンスを参照
+            'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY
+        })
+
+        try {
+            const rawResponse = await fetch(GOOGLE_API_URL, {
+                headers: requestHeader,
+                body: JSON.stringify(reqBody),
+                method: "POST"
+            })
+    
+            const response: RouteMatrixResBody[]  = await rawResponse.json()
+    
+            return response
+        } catch (error) {
+            throw new ApiError('交通情報の取得に失敗し、プランが生成できませんでした。別の条件でお試しください')
+        }
+    }       
 }
 
 

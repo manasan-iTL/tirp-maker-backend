@@ -12,6 +12,8 @@ import GPlacesRepo, { IFetchPlacePhotoRequestArgs } from './repositories/gPlaces
 import redisClient from './lib/redis';
 import session from 'express-session';
 import RedisStore from 'connect-redis';
+import { ApiError, ApiRateLimit, NotFoundRoutesError, NotFoundThemeError } from './error/CustomError';
+import { checkSessionCount } from './middleware/checkApiLimit';
 const app = express();
 const port = 8000;
 
@@ -49,6 +51,8 @@ const client = new Client({});
 const MIN_SPOTS_PER_DAY = 3
 const GoogleApiKey = process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY : ""
 
+app.use(checkSessionCount)
+
 app.get('/api/spots', async (req: Request, res: Response) => {
 
     if (req.query === undefined || req.query.keyword === undefined)  { 
@@ -62,10 +66,9 @@ app.get('/api/spots', async (req: Request, res: Response) => {
 
     try {
         const result = await gPlacesRepo.searchPlacesWithKeyword(query);
-        console.log(result)
 
         const requestPromise: Promise<v2ReqSpot>[] = result.places.map(async place => {
-            const photoId = place.photos[0].name.split("/").pop();
+            const photoId = place.photos[0]?.name.split("/").pop();
 
             if (!photoId) {
                 return {
@@ -116,9 +119,6 @@ app.get('/api/spots', async (req: Request, res: Response) => {
         // res.json({status: "pre-success", query: query})
     }
 });
-
-
-// app.get('/api/spots2', async (req: Request, res: Response) => {
 //     const query = req.query ? String(req.query.keyword) : ""
 
 //     const Lating: LatLngLiteral = {
@@ -572,14 +572,30 @@ app.post("/api/spots/photos", async (req: Request<unknown, unknown, PhotosReques
 })
 
 app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+
+    if (
+        error instanceof NotFoundRoutesError ||
+        error instanceof NotFoundThemeError
+    ) {
+        return res.status(422).json({ success: false, message: error.message });
+    }
+
+    if (error instanceof ApiError) {
+        return res.status(500).json({ success: false, message: error.message })
+    }
+
+    if (error instanceof ApiRateLimit) {
+        return res.status(403).json({ success: false, message: error.message })
+    }
+
     // 特定のエラータイプに応じてカスタム処理
     if (error.name === 'NotFoundError') {
-        res.status(404).json({ success: false, message: 'Resource not found' });
+        return res.status(404).json({ success: false, message: 'Resource not found' });
     } else if (error.name === 'ValidationError') {
-        res.status(400).json({ success: false, message: error.message });
+        return res.status(400).json({ success: false, message: error.message });
     } else {
         // デフォルトの500エラー
-        res.status(500).json({ success: false, message: 'Internal Server Error' });
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 });
 

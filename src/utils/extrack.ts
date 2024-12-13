@@ -1,4 +1,3 @@
-import { LatLngLiteral } from "@googlemaps/google-maps-services-js";
 import { PlacesResponse } from "src/types";
 import { GOOGLE_PLACES_API_KEY } from "src/const/google";
 
@@ -112,8 +111,6 @@ export async function fetchSpotViaV2Detail() {
         })
 
         const response = await rawResponse.json()
-
-        console.log(response)
     } catch (error) {
         console.log(error)
     }

@@ -581,7 +581,7 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
     }
 
     if (error instanceof ApiError) {
-        return res.status(500).json({ success: false, message: error.message })
+        return res.status(501).json({ success: false, message: error.message })
     }
 
     if (error instanceof ApiRateLimit) {

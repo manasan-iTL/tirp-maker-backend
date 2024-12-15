@@ -78,6 +78,8 @@ apiRouter.post(
         req
       });
 
+      console.log(newOrigin)
+
       // TODO: 旅行先の中心点を求める(現状はspotが中心 areaにも対応したい)
       // TODO: Routes APIで出発地から中心点までにかかる時間を算出する
       // ユーザーが食事について希望があればそのキーワードを元にSearch
@@ -138,6 +140,7 @@ apiRouter.post(
         date: req.body.date,
       });
     } catch (error) {
+      console.log(error)
       if (error instanceof ValidationError) {
         next(new NotFoundThemeError(error.message))
       }

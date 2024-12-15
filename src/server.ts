@@ -68,6 +68,22 @@ app.get('/api/spots', async (req: Request, res: Response) => {
         const result = await gPlacesRepo.searchPlacesWithKeyword(query);
 
         const requestPromise: Promise<v2ReqSpot>[] = result.places.map(async place => {
+
+            if (!place.photos || place.photos.length === 0 ) {
+                return {
+                    place_id: place.id,
+                    spotName: place.displayName.text,
+                    spotImgSrc: "",
+                    spotImgAlt: "",
+                    location: place.location,
+                    types: place.types,
+                    rating: place.rating,
+                    userRatingCount: place.userRatingCount,
+                    formattedAddress: place.formattedAddress,
+                    photoReference: "",
+                }
+            }
+            
             const photoId = place.photos[0]?.name.split("/").pop();
 
             if (!photoId) {
@@ -81,7 +97,7 @@ app.get('/api/spots', async (req: Request, res: Response) => {
                     rating: place.rating,
                     userRatingCount: place.userRatingCount,
                     formattedAddress: place.formattedAddress,
-                    photoReference: place.photos[0],
+                    photoReference: "",
                 }
             }
 
@@ -581,7 +597,7 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
     }
 
     if (error instanceof ApiError) {
-        return res.status(500).json({ success: false, message: error.message })
+        return res.status(501).json({ success: false, message: error.message })
     }
 
     if (error instanceof ApiRateLimit) {

@@ -134,7 +134,7 @@ class GPlacesRepo {
 
 
 
-    private async _fetchTextSearch(body: IFetchTextSearchBodyArgs, header: Headers | null = null) {
+    private async _fetchTextSearch(body: IFetchTextSearchBodyArgs, header: Headers | null = null): Promise<PlacesResponse> {
 
         // TODO: ヘッダーを生成する関数に切り出す
         const requestHeader = header ?? new Headers({
@@ -151,9 +151,13 @@ class GPlacesRepo {
                 body: JSON.stringify(body)
             })
     
-            const response: PlacesResponse = await rawResponse.json()
+            const response: PlacesResponse | {} = await rawResponse.json()
+
+            if (Object.keys(response).length === 0) {
+                throw new ApiError('行きたい場所周辺には目的に合った観光スポットが存在しません。条件を変えてお試しください。')
+            }
     
-            return response
+            return response as PlacesResponse
         } catch (error) {
             console.log(error)
             throw new ApiError('観光スポットの取得に失敗しました。条件を変えて検索してみてください')
@@ -201,10 +205,14 @@ class GPlacesRepo {
                 headers: requestHeader,
                 body: JSON.stringify(body)
             })
+
+            const response: PlacesResponse | {} = await rawResponse.json()
+
+            if (Object.keys(response).length === 0) {
+                throw new ApiError('行きたい場所周辺には目的に合った観光スポットが存在しません。条件を変えてお試しください。')
+            }
     
-            const response: PlacesResponse = await rawResponse.json()
-    
-            return response
+            return response as PlacesResponse
         } catch (error) {
             console.log(error)
             throw new ApiError('観光スポットの取得に失敗しました。条件を変えて検索してみてください')

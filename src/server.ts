@@ -15,7 +15,7 @@ import RedisStore from 'connect-redis';
 import { ApiError, ApiRateLimit, NotFoundRoutesError, NotFoundThemeError } from './error/CustomError';
 import { checkSessionCount } from './middleware/checkApiLimit';
 const app = express();
-const port = 8000;
+const port = process.env.PORT ? process.env.PORT: 8000;
 
 // COMMENT: Redisとの接続処理
 redisClient.connect().then(() => console.log("Redisに接続")).catch((e) => console.error("Redisへの接続が失敗しました。" + e))

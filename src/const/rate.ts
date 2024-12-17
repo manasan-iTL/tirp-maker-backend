@@ -1,1 +1,1 @@
-export const RATE_COUNT = 3
+export const RATE_COUNT = 8

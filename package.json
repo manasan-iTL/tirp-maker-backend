@@ -3,9 +3,22 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "src/server.js",
+  "main": "./dist/server.cjs",
+  "module": "./dist/server.mjs",
+  "types": "./dist/server.d.cts",
+  "exports": {
+    "require": {
+        "types": "./dist/server.d.cts",
+        "default": "./dist/server.cjs"
+    },
+    "import": {
+        "types": "./dist/server.d.mts",
+        "default": "./dist/server.mjs"
+    }
+  },
   "scripts": {
-    "dev": "nodemon --watch 'src/**/*.ts' --exec \"ts-node\" src/server.ts",
+    "start": "node dist/server.mjs",
+    "build": "pkgroll",
     "server": "tsx watch src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -28,6 +41,7 @@
     "@types/express-session": "^1.18.0",
     "@types/google.maps": "^3.54.3",
     "@types/node": "^20.8.2",
+    "pkgroll": "^2.5.1",
     "tsx": "^4.9.3",
     "typescript": "^5.2.2"
   }

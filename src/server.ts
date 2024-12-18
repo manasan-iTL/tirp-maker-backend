@@ -16,13 +16,24 @@ import { ApiError, ApiRateLimit, NotFoundRoutesError, NotFoundThemeError } from 
 import { checkSessionCount } from './middleware/checkApiLimit';
 const app = express();
 const port = process.env.PORT ? process.env.PORT: 8000;
+const allowd = ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://chiltrip.vercel.app']
 
 // COMMENT: Redisとの接続処理
 redisClient.connect().then(() => console.log("Redisに接続")).catch((e) => console.error("Redisへの接続が失敗しました。" + e))
 
 app.use(express.json())
+
+app.get('/health', (req, res) => {
+    return res.status(204).json({status: 'Success'})
+})
+
+if (process.env.NODE_ENV === 'production') {
+    console.log('プロキシ設定の追加')
+    app.set('trust proxy', 1)
+}
+
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://chiltrip.vercel.app/'], //アクセス許可するオリジン
+    origin: allowd, //アクセス許可するオリジン
     credentials: true, //レスポンスヘッダーにAccess-Control-Allow-Credentials追加
     optionsSuccessStatus: 200 //レスポンスstatusを200に設定
 }))
@@ -55,6 +66,9 @@ app.get('/api/spots', async (req: Request, res: Response) => {
     }
 
     console.log("Execute")
+    console.log(req.secure)
+    console.log(process.env.NODE_ENV)
+
     const query = req.query ? String(req.query.keyword) : ""
     const gPlacesRepo = new GPlacesRepo()
 
@@ -159,4 +173,7 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
     }
 });
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+app.listen(port, () => {
+    console.log(`Example app listening on port ${port}!`)
+    console.log(allowd)
+});

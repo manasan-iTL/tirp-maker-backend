@@ -58,9 +58,9 @@ class ValidateTripRule {
     }
 
     /**
-     * isValidTripInfo
-     * 旅行日数に対して行動時間が旅行日数×4時間未満ならエラーを返す
-
+     * 
+     * @param {IsValidTripInfoArgs} 
+     * @returns 
      */
     public async isValidTripInfo(
         {

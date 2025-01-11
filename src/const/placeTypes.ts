@@ -1,7 +1,6 @@
 export const PlaceType = {
     hotel: "HOTEL",
     eating: "EATING",
-    sightseeing: "SIGHTSEEING",
     amusementPark: "AMUSEMENT_PARK",
     themePark: "THEME_PARK",
     hiking: "HIKING",

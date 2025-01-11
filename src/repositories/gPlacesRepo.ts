@@ -315,7 +315,6 @@ class GPlacesRepo {
     }
 
     private _createNeabySearchReqBody(args: INearbySearchReqBody): IFetchNearbySearchBodyArgs {
-        const calcRectangle = new CalcSpotPoint().calcReqtanglePoint(args.spot);
         const count = args.days * 10 <= 20 ? args.days * 10 : 20;
 
         return {

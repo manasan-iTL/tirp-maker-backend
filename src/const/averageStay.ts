@@ -2,7 +2,6 @@
 export const averageStayByPlaceType = {
     hotel: 0,
     eating: 60 * 60 * 1.5,
-    sightseeing: 60 * 60 * 1.5,
     amusementPark: 60 * 60 * 6,
     themePark: 60 * 60 * 6,
     hiking: 60 * 60 * 5,

@@ -224,7 +224,7 @@ class CalcRoutes {
       graph: NewGraph,
       startNode: string,
       endNode: string,
-      isRecrusion: boolean,
+      isReVisted: boolean,
       constraints: Constraints,
       bestResults: PathResult[]
   ): void {
@@ -240,7 +240,7 @@ class CalcRoutes {
               currentNode: startNode,
               path: [startNode],
               totalTime: 0,
-              visitCount: isRecrusion ? new Map([[startNode, 1]]) : new Map([[startNode, 2]]),
+              visitCount: isReVisted ? new Map([[startNode, 1]]) : new Map([[startNode, 2]]),
               mustPassNodes: new Set(constraints.mustPassNodes),
           },
       ];
@@ -281,7 +281,6 @@ class CalcRoutes {
   
               // 時間制約のチェック
               const nextArrivalTime = totalTime + edge.travelTime;
-              // if (!isValidTimeConstraint(nextNode, nextArrivalTime, nextArrivalTime + edge.stayTime)) continue;
 
               const updatedVisitCount = new Map(visitCount);
               updatedVisitCount.set(nextNode, nextVisitCount + 1);
@@ -307,7 +306,7 @@ class CalcRoutes {
         graph: NewGraph,
         startNode: string,
         endNode: string,
-        isRecrusion: boolean,
+        isReVisted: boolean,
         constraints: Constraints,
         bestResults: PathResult[],
     ): void {
@@ -323,7 +322,7 @@ class CalcRoutes {
                 currentNode: startNode,
                 path: [startNode],
                 totalTime: 0,
-                visitCount: isRecrusion ? new Map([[startNode, 1]]) : new Map([[startNode, 2]]),
+                visitCount: isReVisted ? new Map([[startNode, 1]]) : new Map([[startNode, 2]]),
                 mustPassNodes: new Set(constraints.mustPassNodes),
             },
         ];

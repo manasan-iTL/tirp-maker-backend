@@ -9,8 +9,6 @@ export function calcAverageStayTime(types:string[]): number {
     
     if (types.includes(PlaceType.eating)) return averageStayByPlaceType.eating
 
-    if (types.includes(PlaceType.sightseeing)) return averageStayByPlaceType.sightseeing
-
     if (types.includes(PlaceType.hotel)) return averageStayByPlaceType.hotel
 
     if (types.includes(PlaceType.amusementPark)) return averageStayByPlaceType.amusementPark

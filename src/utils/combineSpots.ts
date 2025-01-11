@@ -76,7 +76,7 @@ class GenerateCombineSpot {
 
         // 1通り
         const themeBasedPatterns = copyRecommendSpots.map(
-            recommendSpot => this.generateOneCombineRoute(recommendSpot, addRestaurants, addHotel)
+            recommendSpot => this._generateOneCombineRoute(recommendSpot, addRestaurants, addHotel)
         ) 
 
         // 2通り
@@ -156,7 +156,7 @@ class GenerateCombineSpot {
         return v2ReqSpots
     }
 
-    private generateOneCombineRoute(
+    private _generateOneCombineRoute(
         recommendSpot: IFetchAllRecommendSpot,
         restaurants: v2ReqSpot[],
         hotel: v2ReqSpot

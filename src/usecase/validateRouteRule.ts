@@ -493,18 +493,6 @@ class ValidateRouteRule {
         // 活動時間が長い日を抽出（起点）
         const sortedActiveTimes = [...this.activeTimes].map((time, index) => ({ index, activeTime: time })).sort((a,b) => (a.activeTime > b.activeTime ? -1: 1))
 
-        // 条件3 最も活動時間がある日からn個ずつMustSpotを減らしていく
-        // 補足 ここで減らしたMustSpotsの時でループを抜ける
-
-        // activeTimesをループさせ、1日の活動時間を取得する
-        // MustSpotのトータルタイムが0ならば、Eating情報をだけ追加して早期リターン
-        // 条件1/2を行う
-        // それでだめな場合は以下のループを行う
-           // mustSpotNodesのトータルタイムがactiveTimeを下回るまで
-           // mustSpotNodesからNodeを1つ取り出し、ぞの分だけトータルタイムを減らす
-           // 条件を満たしたらループを抜け出す
-        // 一時保存したmustSpotNOdesを元にトータルタイムを計算し更新、
-
         const memoMustSpot: MemoMustSpot[] = []
 
         for (let index = 0; index < sortedActiveTimes.length; index++) {
@@ -598,18 +586,6 @@ class ValidateRouteRule {
         })
 
         return result
-        // 条件3-2 条件2が成立かつ、次点に長い日に取り出したMustSpotのトータルタイムとEating*1の合計がactiveTimeを超えているか
-
-        // 条件4 MustSpotsのトータルタイムの合計がactiveTimeを超えているか
-
-        // 条件5 条件3と同じことを行う
-        // 条件5-1 条件2が成立かつ、次点に長い日に取り出したMustSpotのトータルタイムの合計がactiveTimeを超えているか
-
-        // ここまでやりだめなら例外スロー
-
-        // 活動時間が長い日にMustNodesを可能な限り追加する
-
-        // 
     }
 
     /**
